@@ -1,291 +1,190 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
-import Sidebar from "@/components/layout/sidebar";
-import TopBar from "@/components/layout/topbar";
-import MobileNavigation from "@/components/layout/mobile-navigation";
-import { 
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+// import { Input } from "@/components/ui/input"; // Rimosso perché non utilizzato
+import { Textarea } from "@/components/ui/textarea";
+import { motion } from "framer-motion";
+import { Send } from "lucide-react"; // Sostituito PaperPlaneIcon con Send da lucide-react
 import { useToast } from "@/hooks/use-toast";
-import { Check, Send, MessageSquare, RefreshCw, Sparkles, Dumbbell, Brain, Calendar } from "lucide-react";
-import { AiSuggestion } from "@shared/schema";
-import { askAiAssistant } from "@/lib/ai-assistant";
 
-interface Message {
+// Interfaccia per un singolo messaggio nella chat
+interface ChatMessage {
   id: string;
-  content: string;
+  text: string;
   sender: "user" | "ai";
   timestamp: Date;
 }
 
-export default function AiAssistant() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "welcome",
-      content: "Ciao! Sono il tuo assistente fitness personale. Come posso aiutarti oggi?",
-      sender: "ai",
-      timestamp: new Date(),
-    },
-  ]);
-  const [inputMessage, setInputMessage] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
-  
-  const queryClient = useQueryClient();
+// Interfaccia per la risposta simulata dell_AI
+interface AiResponse {
+  answer: string;
+  followUpQuestions?: string[];
+}
+
+const AiAssistantPage = () => {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  
-  // Fetch AI suggestions
-  const { data: suggestions } = useQuery<AiSuggestion>({
-    queryKey: ["/api/ai/suggestions"],
-  });
-  
-  // Mutation to ask AI assistant
-  const { mutate: askAi, isPending: isAiThinking } = useMutation({
-    mutationFn: async (query: string) => {
-      return await askAiAssistant(query);
-    },
-    onSuccess: (data) => {
-      const aiResponse: Message = {
-        id: Date.now().toString(),
-        content: data.response,
+
+  // Simula una risposta dall_AI
+  const getAiResponse = async (userMessage: string): Promise<AiResponse> => {
+    setIsLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
+    setIsLoading(false);
+
+    let answer = "Non sono sicuro di come rispondere. Puoi riformulare la domanda?";
+    let followUpQuestions: string[] = [
+      "Qual è il tuo obiettivo principale di fitness?",
+      "Hai preferenze per allenamenti a corpo libero o con attrezzi?",
+      "Quanto tempo hai a disposizione per allenarti oggi?"
+    ];
+
+    if (userMessage.toLowerCase().includes("allenamento")) {
+      answer = "Certo, posso aiutarti a creare un allenamento! Che tipo di allenamento stai cercando? Ad esempio, per tutto il corpo, parte superiore, o gambe?";
+      followUpQuestions = [
+        "Quali gruppi muscolari vuoi allenare?",
+        "Hai attrezzi specifici a disposizione?",
+        "Quanto tempo vuoi dedicare all_allenamento?"
+      ];
+    } else if (userMessage.toLowerCase().includes("dieta") || userMessage.toLowerCase().includes("nutrizione")) {
+      answer = "Posso darti dei consigli generali sulla nutrizione. Ricorda che per un piano alimentare personalizzato dovresti consultare un professionista. Cosa ti interessa sapere in particolare?";
+      followUpQuestions = [
+        "Stai cercando di perdere peso, mantenere o aumentare la massa muscolare?",
+        "Hai qualche restrizione alimentare?",
+        "Quali sono i tuoi cibi preferiti?"
+      ];
+    } else if (userMessage.toLowerCase().includes("ciao") || userMessage.toLowerCase().includes("salve")) {
+      answer = "Ciao! Come posso aiutarti oggi con i tuoi obiettivi di fitness?";
+    }
+
+    return { answer, followUpQuestions };
+  };
+
+  const handleSendMessage = async (e?: React.FormEvent<HTMLFormElement>) => {
+    if (e) e.preventDefault();
+    if (!input.trim()) return;
+
+    const userMessage: ChatMessage = {
+      id: `user-${Date.now()}`,
+      text: input,
+      sender: "user",
+      timestamp: new Date(),
+    };
+    setMessages(prev => [...prev, userMessage]);
+    setInput("");
+
+    try {
+      const aiResponse = await getAiResponse(userMessage.text);
+      const aiMessage: ChatMessage = {
+        id: `ai-${Date.now()}`,
+        text: aiResponse.answer,
         sender: "ai",
         timestamp: new Date(),
       };
-      
-      setMessages((prev) => [...prev, aiResponse]);
-      setIsTyping(false);
-    },
-    onError: (error) => {
+      setMessages(prev => [...prev, aiMessage]);
+
+      if (aiResponse.followUpQuestions && aiResponse.followUpQuestions.length > 0) {
+        console.log("Follow-up questions:", aiResponse.followUpQuestions);
+      }
+
+    } catch (error) {
       toast({
-        title: "Errore",
-        description: "Impossibile ottenere una risposta dall'assistente. Riprova più tardi.",
+        title: "Errore Assistente AI",
+        description: "Si è verificato un errore durante la comunicazione con l_assistente.",
         variant: "destructive",
       });
-      setIsTyping(false);
-    },
-  });
-  
-  // Handle form submission
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!inputMessage.trim()) return;
-    
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      content: inputMessage,
-      sender: "user",
-      timestamp: new Date(),
-    };
-    
-    setMessages((prev) => [...prev, userMessage]);
-    setInputMessage("");
-    setIsTyping(true);
-    
-    askAi(inputMessage);
+      const errorMessage: ChatMessage = {
+        id: `error-${Date.now()}`,
+        text: "Spiacente, non sono riuscito a elaborare la tua richiesta. Riprova più tardi.",
+        sender: "ai",
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    }
   };
-  
-  // Quick question templates
-  const quickQuestions = [
-    {
-      text: "Come posso migliorare i miei squat?",
-      icon: <Dumbbell className="h-4 w-4 mr-2" />,
-    },
-    {
-      text: "Quante calorie dovrei bruciare al giorno?",
-      icon: <Sparkles className="h-4 w-4 mr-2" />,
-    },
-    {
-      text: "Suggerisci un allenamento per le braccia",
-      icon: <Calendar className="h-4 w-4 mr-2" />,
-    },
-    {
-      text: "Come recuperare dopo un allenamento intenso?",
-      icon: <Brain className="h-4 w-4 mr-2" />,
-    },
-  ];
-  
-  // Handle quick question click
-  const handleQuickQuestion = (question: string) => {
-    setInputMessage(question);
-    
-    // Submit the question automatically
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      content: question,
-      sender: "user",
-      timestamp: new Date(),
-    };
-    
-    setMessages((prev) => [...prev, userMessage]);
-    setInputMessage("");
-    setIsTyping(true);
-    
-    askAi(question);
-  };
-  
+
   return (
-    <div className="flex h-screen bg-lightBg">
-      <Sidebar />
-      
-      <main className="flex-1 overflow-hidden flex flex-col">
-        <TopBar title="Assistente IA" />
-        
-        <div className="flex-1 flex p-4 md:p-6 overflow-hidden">
-          <div className="flex flex-col md:flex-row w-full h-full gap-4">
-            {/* Sidebar with Suggestions */}
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.3 }}
-              className="md:w-72 lg:w-80 flex-shrink-0"
-            >
-              <Card className="h-full flex flex-col">
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Sparkles className="h-5 w-5 mr-2 text-primary" />
-                    Suggerimenti
-                  </CardTitle>
-                  <CardDescription>
-                    Consigli personalizzati basati sui tuoi allenamenti
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex-1 overflow-y-auto">
-                  <div className="space-y-4">
-                    {suggestions?.suggestions?.map((suggestion: string, index: number) => (
-                      <motion.div
-                        key={index}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3, delay: 0.1 + index * 0.1 }}
-                        className="p-3 bg-secondary/5 rounded-lg"
-                      >
-                        <div className="flex">
-                          <Check className="text-accent mt-1 mr-2 h-5 w-5 flex-shrink-0" />
-                          <p className="text-sm">{suggestion}</p>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                  
-                  <div className="mt-6">
-                    <h3 className="font-medium mb-3">Domande rapide</h3>
-                    <div className="space-y-2">
-                      {quickQuestions.map((question, index) => (
-                        <Button
-                          key={index}
-                          variant="outline"
-                          className="w-full justify-start text-left"
-                          onClick={() => handleQuickQuestion(question.text)}
-                        >
-                          {question.icon}
-                          <span className="truncate">{question.text}</span>
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-            
-            {/* Chat Interface */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-              className="flex-1 flex flex-col bg-white rounded-lg shadow-sm overflow-hidden"
-            >
-              <div className="p-4 border-b flex items-center">
-                <div className="bg-secondary/20 p-2 rounded-lg mr-3">
-                  <MessageSquare className="h-5 w-5 text-secondary" />
-                </div>
-                <div>
-                  <h2 className="font-semibold">Assistente Fitness</h2>
-                  <p className="text-xs text-gray-500">Alimentato da intelligenza artificiale</p>
-                </div>
-              </div>
-              
-              <div className="flex-1 overflow-y-auto p-4">
-                <div className="space-y-4">
-                  {messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={`flex ${
-                        message.sender === "user" ? "justify-end" : "justify-start"
-                      }`}
-                    >
-                      <div
-                        className={`max-w-3/4 p-3 rounded-lg ${
-                          message.sender === "user"
-                            ? "bg-primary text-white rounded-tr-none"
-                            : "bg-gray-100 text-gray-800 rounded-tl-none"
-                        }`}
-                      >
-                        <p className="text-sm">{message.content}</p>
-                        <div
-                          className={`text-xs mt-1 ${
-                            message.sender === "user" ? "text-white/70" : "text-gray-500"
-                          }`}
-                        >
-                          {message.timestamp.toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  
-                  {isTyping && (
-                    <div className="flex justify-start">
-                      <div className="max-w-3/4 p-3 bg-gray-100 text-gray-800 rounded-lg rounded-tl-none">
-                        <div className="flex space-x-2">
-                          <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce"></div>
-                          <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: "0.2s" }}></div>
-                          <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: "0.4s" }}></div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              <form onSubmit={handleSubmit} className="border-t p-4">
-                <div className="flex items-center">
-                  <Input
-                    placeholder="Scrivi un messaggio..."
-                    value={inputMessage}
-                    onChange={(e) => setInputMessage(e.target.value)}
-                    disabled={isAiThinking || isTyping}
-                    className="flex-1"
-                  />
-                  <Button
-                    type="submit"
-                    size="icon"
-                    className="ml-2 bg-primary hover:bg-primary-dark text-white"
-                    disabled={isAiThinking || isTyping || !inputMessage.trim()}
-                  >
-                    {isAiThinking || isTyping ? (
-                      <RefreshCw className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Send className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </form>
-            </motion.div>
+    <div className="container mx-auto p-4 flex flex-col h-[calc(100vh-var(--header-height)-var(--footer-height))]">
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-6 text-center"
+      >
+        <h1 className="text-3xl font-bold font-heading">Assistente AI NemFit</h1>
+        <p className="text-muted-foreground">
+          Chiedimi qualsiasi cosa riguardo ai tuoi allenamenti, nutrizione o obiettivi di fitness!
+        </p>
+      </motion.div>
+
+      <div className="flex-grow overflow-y-auto bg-muted/30 p-4 rounded-lg shadow-inner mb-4 space-y-4">
+        {messages.length === 0 && (
+          <div className="text-center text-gray-500 py-10">
+            <i className="ri-question-answer-line text-4xl mb-2"></i>
+            <p>Nessun messaggio ancora. Inizia una conversazione!</p>
           </div>
-        </div>
-      </main>
-      
-      <MobileNavigation />
+        )}
+        {messages.map((msg) => (
+          <motion.div
+            key={msg.id}
+            initial={{ opacity: 0, y: msg.sender === "user" ? 10 : -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
+          >
+            <div
+              className={`max-w-xs md:max-w-md lg:max-w-lg p-3 rounded-xl shadow ${ 
+                msg.sender === "user"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-background border"
+              }`}
+            >
+              <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
+              <p className={`text-xs mt-1 ${msg.sender === "user" ? "text-primary-foreground/70 text-right" : "text-muted-foreground text-left"}`}>
+                {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </p>
+            </div>
+          </motion.div>
+        ))}
+        {isLoading && (
+          <motion.div 
+            initial={{ opacity: 0}} 
+            animate={{ opacity: 1}} 
+            className="flex justify-start"
+          >
+            <div className="max-w-xs md:max-w-md lg:max-w-lg p-3 rounded-xl shadow bg-background border">
+              <div className="flex items-center space-x-2">
+                <div className="h-2 w-2 bg-primary rounded-full animate-pulse delay-75"></div>
+                <div className="h-2 w-2 bg-primary rounded-full animate-pulse delay-150"></div>
+                <div className="h-2 w-2 bg-primary rounded-full animate-pulse delay-300"></div>
+                <span className="text-sm text-muted-foreground">L_AI sta pensando...</span>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </div>
+
+      <form onSubmit={handleSendMessage} className="flex items-center gap-2 sticky bottom-0 bg-background py-2">
+        <Textarea
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Scrivi il tuo messaggio..."
+          className="flex-grow resize-none p-3 border rounded-lg focus:ring-2 focus:ring-primary transition-shadow duration-150"
+          rows={1}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              handleSendMessage();
+            }
+          }}
+          disabled={isLoading}
+        />
+        <Button type="submit" size="icon" className="h-12 w-12" disabled={isLoading || !input.trim()}>
+          <Send className="h-5 w-5" /> {/* Usata icona Send */}
+          <span className="sr-only">Invia</span>
+        </Button>
+      </form>
     </div>
   );
-}
+};
+
+export default AiAssistantPage;
+

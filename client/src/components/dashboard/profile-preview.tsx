@@ -46,12 +46,12 @@ const ProfilePreview = () => {
             <div className="z-10 rounded-full p-1 bg-white shadow-md">
               <Avatar className="h-24 w-24 md:h-32 md:w-32 border-4 border-white">
                 {mainAvatar?.previewUrl ? (
-                  <AvatarImage src={mainAvatar.previewUrl} />
+                  <AvatarImage src={mainAvatar.previewUrl} alt={`${user.name || user.username}'s avatar`} />
                 ) : (
-                  <AvatarImage src={user.profileImage || "https://picsum.photos/200"} />
+                  <AvatarImage src={user.profileImage || "/images/placeholder-avatar-icon.png"} alt={`${user.name || user.username}'s profile`} />
                 )}
                 <AvatarFallback className="text-2xl">
-                  {user.name?.charAt(0) || user.username?.charAt(0) || "U"}
+                  {user.name?.charAt(0).toUpperCase() || user.username?.charAt(0).toUpperCase() || "U"}
                 </AvatarFallback>
               </Avatar>
             </div>
@@ -59,7 +59,7 @@ const ProfilePreview = () => {
             <div className="flex-1 mt-4 md:mt-0 md:ml-6 text-center md:text-left">
               <div className="flex flex-col md:flex-row md:items-start md:justify-between">
                 <div>
-                  <h2 className="text-xl font-bold font-heading">{user.name}</h2>
+                  <h2 className="text-xl font-bold font-heading">{user.name || user.username}</h2>
                   <p className="text-gray-600 text-sm">@{user.username}</p>
                 </div>
                 <Link to="/profile">
@@ -102,7 +102,10 @@ const ProfilePreview = () => {
                     </span>
                   </div>
                   {achievement.completed && (
-                    <Badge variant="success" className="bg-green-100 text-green-800 hover:bg-green-100">
+                    // La variante "success" non è standard per ShadCN Badge.
+                    // Usiamo "default" o "secondary" e applichiamo stili custom se necessario,
+                    // oppure rimuoviamo la variante se gli stili inline sono sufficienti.
+                    <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
                       Completato
                     </Badge>
                   )}
@@ -124,3 +127,4 @@ const ProfilePreview = () => {
 };
 
 export default ProfilePreview;
+

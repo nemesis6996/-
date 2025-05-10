@@ -1,20 +1,42 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { AvatarCustomization } from "@shared/schema";
+import { AvatarCustomization as AvatarCustomizationSchema } from "@shared/schema"; // Rinomino per evitare conflitti
+
+// Definisco un tipo più completo per lo stato, basato sull'uso effettivo
+interface AvatarCustomizationStateItem extends AvatarCustomizationSchema {
+  userId?: string | number; // Aggiungo userId, potrebbe essere stringa o numero
+  name?: string;
+  isPrimary?: boolean;
+  avatarData?: {
+    body?: string;
+    height?: number;
+    hairStyle?: string;
+    hairColor?: string;
+    skinTone?: string;
+    eyeColor?: string;
+    facialHair?: string;
+    // Altri campi specifici dell'avatar
+  };
+  previewUrl?: string;
+  createdAt?: string;
+  lastUpdated?: string;
+}
+
+interface ScanHistoryItem {
+  id: string; // Uniformato a stringa
+  date: string;
+  measurements: {
+    height: number;
+    weight: number;
+    chestSize: number;
+    waistSize: number;
+    armSize: number;
+    legSize: number;
+  };
+}
 
 interface AvatarState {
-  customizations: AvatarCustomization[];
-  scanHistory: {
-    id: number;
-    date: string;
-    measurements: {
-      height: number;
-      weight: number;
-      chestSize: number;
-      waistSize: number;
-      armSize: number;
-      legSize: number;
-    }
-  }[];
+  customizations: AvatarCustomizationStateItem[];
+  scanHistory: ScanHistoryItem[];
   loading: boolean;
   error: string | null;
 }
@@ -22,8 +44,8 @@ interface AvatarState {
 const initialState: AvatarState = {
   customizations: [
     {
-      id: 1,
-      userId: 1,
+      id: "1", // Cambiato in stringa
+      userId: "1", // Esempio, da verificare tipo effettivo
       name: "Il mio avatar",
       isPrimary: true,
       avatarData: {
@@ -35,6 +57,8 @@ const initialState: AvatarState = {
         eyeColor: "#336699",
         facialHair: "none",
       },
+      category: "default", // Aggiunta category richiesta da AvatarCustomizationSchema
+      value: "default",    // Aggiunto value richiesto da AvatarCustomizationSchema
       previewUrl: "https://picsum.photos/id/1/200/200",
       createdAt: new Date().toISOString(),
       lastUpdated: new Date().toISOString(),
@@ -42,7 +66,7 @@ const initialState: AvatarState = {
   ],
   scanHistory: [
     {
-      id: 1,
+      id: "1", // Cambiato in stringa
       date: "2023-06-01",
       measurements: {
         height: 180,
@@ -54,7 +78,7 @@ const initialState: AvatarState = {
       }
     },
     {
-      id: 2,
+      id: "2", // Cambiato in stringa
       date: "2023-07-01",
       measurements: {
         height: 180,
@@ -66,7 +90,7 @@ const initialState: AvatarState = {
       }
     },
     {
-      id: 3,
+      id: "3", // Cambiato in stringa
       date: "2023-08-01",
       measurements: {
         height: 180,
@@ -86,26 +110,26 @@ export const avatarSlice = createSlice({
   name: "avatar",
   initialState,
   reducers: {
-    setCustomizations: (state, action: PayloadAction<AvatarCustomization[]>) => {
+    setCustomizations: (state, action: PayloadAction<AvatarCustomizationStateItem[]>) => {
       state.customizations = action.payload;
     },
-    addCustomization: (state, action: PayloadAction<AvatarCustomization>) => {
+    addCustomization: (state, action: PayloadAction<AvatarCustomizationStateItem>) => {
       state.customizations.push(action.payload);
     },
-    updateCustomization: (state, action: PayloadAction<{id: number, customization: Partial<AvatarCustomization>}>) => {
+    updateCustomization: (state, action: PayloadAction<{id: string, customization: Partial<AvatarCustomizationStateItem>}>) => {
       const { id, customization } = action.payload;
       const index = state.customizations.findIndex(c => c.id === id);
       if (index !== -1) {
         state.customizations[index] = { ...state.customizations[index], ...customization };
       }
     },
-    deleteCustomization: (state, action: PayloadAction<number>) => {
+    deleteCustomization: (state, action: PayloadAction<string>) => { // ID è stringa
       state.customizations = state.customizations.filter(c => c.id !== action.payload);
     },
-    setScanHistory: (state, action: PayloadAction<AvatarState["scanHistory"]>) => {
+    setScanHistory: (state, action: PayloadAction<ScanHistoryItem[]>) => {
       state.scanHistory = action.payload;
     },
-    addScan: (state, action: PayloadAction<AvatarState["scanHistory"][0]>) => {
+    addScan: (state, action: PayloadAction<ScanHistoryItem>) => {
       state.scanHistory.push(action.payload);
     },
     setLoading: (state, action: PayloadAction<boolean>) => {
@@ -129,3 +153,4 @@ export const {
 } = avatarSlice.actions;
 
 export default avatarSlice.reducer;
+

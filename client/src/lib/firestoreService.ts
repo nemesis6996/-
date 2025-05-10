@@ -10,7 +10,7 @@ import {
   where, 
   getDocs, 
   Timestamp, 
-  collectionGroup, 
+  // collectionGroup, // Rimosso perché non utilizzato
   writeBatch 
 } from "firebase/firestore";
 import { db, auth } from "./firebase"; // Assuming db is exported from firebase.ts
@@ -19,28 +19,27 @@ import {
   Exercise, 
   Workout, 
   WorkoutExercise, 
-  Program, 
-  ProgramWorkout, 
+  // Program, // Rimosso se non utilizzato o definito altrove
+  // ProgramWorkout, // Rimosso se non utilizzato o definito altrove
   UserWorkoutProgress, 
   UserExerciseProgress, 
   MuscleGroup 
   // Import other types as needed
-} from "./firestoreTypes";
+} from "./firestoreTypes"; // Assicurarsi che firestoreTypes.ts esista e definisca questi tipi
 
 // --- User Profile Functions ---
 
-const usersCollection = collection(db, "users");
+// const usersCollection = collection(db, "users"); // Rimosso perché non utilizzato direttamente, le ref sono create on-demand
 
 // Create or Update User Profile (using Firebase Auth UID as document ID)
 export const setUserProfile = async (userId: string, profileData: Partial<UserProfile>): Promise<void> => {
   const userDocRef = doc(db, "users", userId);
-  // Ensure email and creation timestamp are set correctly
   const dataToSet: Partial<UserProfile> = {
     ...profileData,
     email: profileData.email || auth.currentUser?.email || undefined,
     createdAt: profileData.createdAt || Timestamp.now(),
   };
-  await setDoc(userDocRef, dataToSet, { merge: true }); // Use merge:true to update existing or create new
+  await setDoc(userDocRef, dataToSet, { merge: true });
 };
 
 // Get User Profile
@@ -129,17 +128,14 @@ const workoutsCollection = collection(db, "workouts");
 // Add Workout (Template or User-specific)
 export const addWorkout = async (workoutData: Omit<Workout, 'id' | 'createdAt'>, workoutExercisesData: Omit<WorkoutExercise, 'id'>[]): Promise<string> => {
   const batch = writeBatch(db);
-  
-  // 1. Add the main workout document
-  const workoutDocRef = doc(workoutsCollection); // Generate ID upfront
+  const workoutDocRef = doc(workoutsCollection); 
   const dataToAdd = {
     ...workoutData,
-    userId: workoutData.isTemplate ? null : auth.currentUser?.uid, // Set userId if not a template
+    userId: workoutData.isTemplate ? null : auth.currentUser?.uid,
     createdAt: Timestamp.now(),
   };
   batch.set(workoutDocRef, dataToAdd);
 
-  // 2. Add exercises to the subcollection
   const exercisesSubcollection = collection(workoutDocRef, "workoutExercises");
   workoutExercisesData.forEach(exercise => {
     const exerciseDocRef = doc(exercisesSubcollection);
@@ -163,7 +159,7 @@ export const getWorkoutWithExercises = async (workoutId: string): Promise<{ work
   const workoutData = { id: workoutSnap.id, ...workoutSnap.data() } as Workout;
 
   const exercisesSubcollection = collection(workoutDocRef, "workoutExercises");
-  const exercisesQuery = query(exercisesSubcollection); // Add orderBy('order') if needed
+  const exercisesQuery = query(exercisesSubcollection);
   const exercisesSnapshot = await getDocs(exercisesQuery);
   
   const exercises: WorkoutExercise[] = [];
@@ -196,17 +192,22 @@ export const getUserWorkouts = async (userId: string): Promise<Workout[]> => {
   return workouts;
 };
 
-// --- Add more functions for Programs, Progress, etc. as needed ---
+// --- User Workout Progress Functions ---
 
-// Example: Add User Workout Progress
-export const addUserWorkoutProgress = async (progressData: Omit<UserWorkoutProgress, 'id' | 'completedAt'>, exerciseProgressData: Omit<UserExerciseProgress, 'id'>[]): Promise<string> => {
+// Add User Workout Progress
+export const addUserWorkoutProgress = async (progressData: Omit<UserWorkoutProgress, 'id' | 'completedAt' | 'userId'>, exerciseProgressData: Omit<UserExerciseProgress, 'id'>[]): Promise<string> => {
+  const currentUserId = auth.currentUser?.uid;
+  if (!currentUserId) {
+    throw new Error("User not authenticated");
+  }
+
   const batch = writeBatch(db);
   const progressCollection = collection(db, "userWorkoutProgress");
   const progressDocRef = doc(progressCollection);
 
   const dataToAdd = {
     ...progressData,
-    userId: auth.currentUser?.uid, // Ensure userId is set
+    userId: currentUserId, 
     completedAt: Timestamp.now(),
   };
   batch.set(progressDocRef, dataToAdd);
@@ -220,5 +221,4 @@ export const addUserWorkoutProgress = async (progressData: Omit<UserWorkoutProgr
   await batch.commit();
   return progressDocRef.id;
 };
-
 

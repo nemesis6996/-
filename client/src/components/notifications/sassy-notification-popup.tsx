@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useToast } from "@/hooks/use-toast";
+// import { useToast } from "@/hooks/use-toast"; // Rimosso perché toast non è utilizzato
 import { SassyNotification, getRandomNotification } from "@/data/sassy-notifications";
 import { X, Award, Flame, AlertTriangle } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
@@ -57,13 +57,12 @@ const SassyNotificationPopup: React.FC<SassyNotificationPopupProps> = ({
 }) => {
   const [notification, setNotification] = useState<SassyNotification | null>(null);
   const [visible, setVisible] = useState(false);
-  const { toast } = useToast();
+  // const { toast } = useToast(); // Rimosso perché non utilizzato
   const dispatch = useDispatch();
   const isAuthenticated = useSelector((state: RootState) => state.user.isAuthenticated);
 
   // Funzione per mostrare una notifica provocatoria casuale
   const showRandomNotification = () => {
-    // Lista di possibili tipi di notifica per mostrare qualcosa di casuale
     const types: SassyNotification['type'][] = [
       'missed_workout',
       'decreased_weight',
@@ -72,110 +71,87 @@ const SassyNotificationPopup: React.FC<SassyNotificationPopupProps> = ({
       'achievement',
       'motivation'
     ];
-    
-    // Lista di possibili livelli di severità
     const severities: SassyNotification['severity'][] = [
       'light',
       'medium',
       'harsh'
     ];
-    
-    // Scegli un tipo e una severità casuale
     const randomType = types[Math.floor(Math.random() * types.length)];
     const randomSeverity = severities[Math.floor(Math.random() * severities.length)];
+    const randomNotificationData = getRandomNotification(randomType, randomSeverity);
     
-    // Ottieni una notifica casuale
-    const randomNotification = getRandomNotification(randomType, randomSeverity);
-    
-    // Imposta la notifica e rendila visibile
-    setNotification(randomNotification);
+    setNotification(randomNotificationData);
     setVisible(true);
     
-    // Aggiungi la notifica anche allo store Redux
     dispatch(addNotification({
-      text: randomNotification.message,
+      text: randomNotificationData.message,
       time: 'Ora'
     }));
     
-    // Dopo 5 secondi, nascondi la notifica
     setTimeout(() => {
       setVisible(false);
     }, 5000);
   };
 
-  // Mostra notifiche provocatorie a intervalli casuali se l'utente è autenticato
   useEffect(() => {
     if (!showRandomInterval || !isAuthenticated) return;
     
-    // Funzione per mostrare una notifica dopo un intervallo casuale
     const scheduleNextNotification = () => {
       const randomInterval = Math.floor(Math.random() * (maxInterval - minInterval)) + minInterval;
-      
       const timeoutId = setTimeout(() => {
         showRandomNotification();
-        scheduleNextNotification(); // Pianifica la prossima notifica
+        scheduleNextNotification();
       }, randomInterval);
-      
       return timeoutId;
     };
     
     const timeoutId = scheduleNextNotification();
-    
-    // Pulisci il timeout quando il componente viene smontato
     return () => clearTimeout(timeoutId);
-  }, [showRandomInterval, minInterval, maxInterval, isAuthenticated]);
+  }, [showRandomInterval, minInterval, maxInterval, isAuthenticated, dispatch]); // Aggiunto dispatch alle dipendenze di useEffect se showRandomNotification lo usa indirettamente
 
-  // Funzione per chiudere manualmente la notifica
   const closeNotification = () => {
     setVisible(false);
   };
 
-  // Funzione per mostrare una notifica in caso di diminuzione del peso
   const showDecreasedWeightNotification = (severity: SassyNotification['severity'] = 'medium') => {
-    const notification = getRandomNotification('decreased_weight', severity);
-    setNotification(notification);
+    const notificationData = getRandomNotification('decreased_weight', severity);
+    setNotification(notificationData);
     setVisible(true);
-    
     dispatch(addNotification({
-      text: notification.message,
+      text: notificationData.message,
       time: 'Ora'
     }));
-    
     setTimeout(() => {
       setVisible(false);
     }, 5000);
   };
 
-  // Funzione per mostrare una notifica in caso di allenamento mancato
   const showMissedWorkoutNotification = (severity: SassyNotification['severity'] = 'harsh') => {
-    const notification = getRandomNotification('missed_workout', severity);
-    setNotification(notification);
+    const notificationData = getRandomNotification('missed_workout', severity);
+    setNotification(notificationData);
     setVisible(true);
-    
     dispatch(addNotification({
-      text: notification.message,
+      text: notificationData.message,
       time: 'Ora'
     }));
-    
     setTimeout(() => {
       setVisible(false);
     }, 5000);
   };
 
-  // Esponi le funzioni all'esterno tramite window
   useEffect(() => {
-    // @ts-ignore
+    // @ts-ignore window.showSassyNotification è intenzionalmente globale per debugging/test
     window.showSassyNotification = {
       random: showRandomNotification,
       decreasedWeight: showDecreasedWeightNotification,
       missedWorkout: showMissedWorkoutNotification
     };
-    
     return () => {
       // @ts-ignore
       delete window.showSassyNotification;
     };
-  }, []);
+    // Aggiungere dipendenze se le funzioni esposte cambiano o dipendono da stati/props
+  }, [dispatch]); // Aggiunto dispatch se le funzioni esposte lo usano indirettamente
 
   return (
     <AnimatePresence>
@@ -215,3 +191,4 @@ const SassyNotificationPopup: React.FC<SassyNotificationPopupProps> = ({
 };
 
 export default SassyNotificationPopup;
+

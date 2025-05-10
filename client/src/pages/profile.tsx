@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+// import { Label } from "@/components/ui/label"; // Non utilizzato, rimosso
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -28,13 +28,15 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useSelector } from "react-redux";
-import { RootState } from "@/store/store";
+import { RootState, AppDispatch } from "@/store/store"; // Aggiunto AppDispatch
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Camera, Pencil, Save } from "lucide-react";
+import type { User } from "@shared/schema"; // Importa User da shared/schema
+import { setUser as setUserAction } from "@/store/user-slice"; // Importa l'azione Redux
+import { useDispatch } from "react-redux"; // Aggiunto useDispatch
 
-// Form validation schema
 const profileSchema = z.object({
   name: z.string().min(2, { message: "Il nome deve contenere almeno 2 caratteri" }),
   email: z.string().email({ message: "Inserisci un indirizzo email valido" }),
@@ -46,11 +48,11 @@ type ProfileFormValues = z.infer<typeof profileSchema>;
 
 export default function Profile() {
   const user = useSelector((state: RootState) => state.user.user);
+  const dispatch = useDispatch<AppDispatch>(); // Inizializza dispatch
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [isEditingProfile, setIsEditingProfile] = useState(false);
 
-  // Set up form with default values from user state
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
@@ -59,16 +61,29 @@ export default function Profile() {
       level: user?.level || "Principiante",
       profileImage: user?.profileImage || "",
     },
+    // Ricarica i valori del form quando l'utente cambia (es. dopo il login)
+    values: user ? {
+      name: user.name || "",
+      email: user.email || "",
+      level: user.level || "Principiante",
+      profileImage: user.profileImage || "",
+    } : undefined,
   });
 
-  // Mutation for updating profile
-  const { mutate: updateProfile, isPending } = useMutation({
+  const { mutate: updateProfile, isPending } = useMutation<User, Error, ProfileFormValues>({
     mutationFn: async (data: ProfileFormValues) => {
-      const res = await apiRequest("PUT", `/api/users/${user?.id}`, data);
-      return await res.json();
+      if (!user?.id) throw new Error("ID utente non disponibile per l'aggiornamento.");
+      // La risposta da apiRequest è una Response, quindi devi fare .json()
+      const response = await apiRequest("PUT", `/api/users/${user.id}`, data);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: "Errore sconosciuto durante l'aggiornamento del profilo." }));
+        throw new Error(errorData.message || "Errore durante l'aggiornamento del profilo.");
+      }
+      return response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: (updatedUserData) => { // updatedUserData è di tipo User
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      dispatch(setUserAction(updatedUserData)); // Aggiorna lo store Redux con i dati aggiornati
       toast({
         title: "Profilo aggiornato",
         description: "Le tue informazioni sono state aggiornate con successo",
@@ -78,13 +93,12 @@ export default function Profile() {
     onError: (error) => {
       toast({
         title: "Errore",
-        description: "Impossibile aggiornare il profilo. Riprova più tardi.",
+        description: error.message || "Impossibile aggiornare il profilo. Riprova più tardi.",
         variant: "destructive",
       });
     },
   });
 
-  // Form submission handler
   function onSubmit(data: ProfileFormValues) {
     updateProfile(data);
   }
@@ -105,7 +119,6 @@ export default function Profile() {
             </TabsList>
             
             <TabsContent value="profile" className="space-y-6">
-              {/* Profile Header */}
               <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -117,12 +130,12 @@ export default function Profile() {
                     {user?.profileImage ? (
                       <img
                         src={user.profileImage}
-                        alt={user.name}
+                        alt={user.name || "User avatar"} // Aggiunto fallback per alt
                         className="w-full h-full object-cover"
                       />
                     ) : (
                       <span className="text-4xl font-bold text-gray-400">
-                        {user?.name?.charAt(0) || "U"}
+                        {user?.name?.charAt(0).toUpperCase() || "U"} {/* Aggiunto toUpperCase */}
                       </span>
                     )}
                   </div>
@@ -132,14 +145,15 @@ export default function Profile() {
                 </div>
                 
                 <div className="text-center md:text-left">
-                  <h1 className="text-2xl font-bold">{user?.name}</h1>
-                  <p className="text-gray-500">{user?.email}</p>
+                  <h1 className="text-2xl font-bold">{user?.name || "Nome Utente"}</h1>
+                  <p className="text-gray-500">{user?.email || "email@example.com"}</p>
                   <div className="flex flex-wrap gap-2 mt-3 justify-center md:justify-start">
                     <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm">
                       {user?.level || "Principiante"}
                     </span>
+                    {/* Dati fittizi, da sostituire con dati reali se disponibili */}
                     <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm">
-                      24 Allenamenti
+                      24 Allenamenti 
                     </span>
                     <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm">
                       Con FitPro dal 2023
@@ -164,7 +178,6 @@ export default function Profile() {
                 </Button>
               </motion.div>
               
-              {/* Profile Form */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -279,7 +292,6 @@ export default function Profile() {
                 </Card>
               </motion.div>
               
-              {/* Avatar 3D Preview */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -294,12 +306,9 @@ export default function Profile() {
                   </CardHeader>
                   <CardContent className="flex flex-col md:flex-row items-center gap-6">
                     <div className="w-32 h-32 bg-gray-100 rounded-md flex items-center justify-center overflow-hidden">
-                      {user?.avatarData ? (
+                      {user?.avatarData?.url ? ( // Controlla user.avatarData.url
                         <div className="relative w-full h-full">
-                          {/* Qui verrebbe visualizzato l'avatar 3D con una libreria come Three.js */}
-                          <div className="absolute inset-0 flex items-center justify-center bg-primary/10 rounded-lg">
-                            <span className="text-primary font-bold">Avatar 3D</span>
-                          </div>
+                           <img src={user.avatarData.url} alt="Avatar 3D" className="w-full h-full object-contain"/>
                         </div>
                       ) : (
                         <div className="text-center p-4">
@@ -309,17 +318,17 @@ export default function Profile() {
                     </div>
                     <div className="flex-1">
                       <h3 className="text-lg font-semibold mb-2">
-                        {user?.avatarData ? "Il tuo avatar 3D" : "Crea il tuo avatar 3D"}
+                        {user?.avatarData?.url ? "Il tuo avatar 3D" : "Crea il tuo avatar 3D"}
                       </h3>
                       <p className="text-sm text-gray-500 mb-4">
-                        {user?.avatarData 
-                          ? `Ultimo aggiornamento: ${user.avatarLastUpdated ? new Date(user.avatarLastUpdated).toLocaleDateString('it-IT') : 'Mai'}`
+                        {user?.avatarData?.url 
+                          ? `Ultimo aggiornamento: ${user.avatarLastUpdated ? new Date(user.avatarLastUpdated).toLocaleDateString("it-IT") : "Mai"}`
                           : "Effettua una scansione per creare il tuo avatar personalizzato"
                         }
                       </p>
                       <Button asChild>
                         <a href="/avatar-3d">
-                          {user?.avatarData ? "Gestisci avatar" : "Crea avatar"}
+                          {user?.avatarData?.url ? "Gestisci avatar" : "Crea avatar"}
                         </a>
                       </Button>
                     </div>
@@ -327,47 +336,24 @@ export default function Profile() {
                 </Card>
               </motion.div>
 
-              {/* Stats */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6 }}
                 className="grid grid-cols-1 md:grid-cols-3 gap-4"
               >
+                {/* Statistiche fittizie, da popolare con dati reali */}
                 <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-lg">Allenamenti Totali</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-baseline">
-                      <span className="text-3xl font-bold mr-2">124</span>
-                      <span className="text-sm text-gray-500">allenamenti</span>
-                    </div>
-                  </CardContent>
+                  <CardHeader className="pb-2"><CardTitle className="text-lg">Allenamenti Totali</CardTitle></CardHeader>
+                  <CardContent><div className="flex items-baseline"><span className="text-3xl font-bold mr-2">0</span><span className="text-sm text-gray-500">allenamenti</span></div></CardContent>
                 </Card>
-                
                 <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-lg">Calorie Bruciate</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-baseline">
-                      <span className="text-3xl font-bold mr-2">48,290</span>
-                      <span className="text-sm text-gray-500">kcal</span>
-                    </div>
-                  </CardContent>
+                  <CardHeader className="pb-2"><CardTitle className="text-lg">Calorie Bruciate</CardTitle></CardHeader>
+                  <CardContent><div className="flex items-baseline"><span className="text-3xl font-bold mr-2">0</span><span className="text-sm text-gray-500">kcal</span></div></CardContent>
                 </Card>
-                
                 <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-lg">Tempo Totale</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-baseline">
-                      <span className="text-3xl font-bold mr-2">102</span>
-                      <span className="text-sm text-gray-500">ore</span>
-                    </div>
-                  </CardContent>
+                  <CardHeader className="pb-2"><CardTitle className="text-lg">Tempo Totale</CardTitle></CardHeader>
+                  <CardContent><div className="flex items-baseline"><span className="text-3xl font-bold mr-2">0</span><span className="text-sm text-gray-500">ore</span></div></CardContent>
                 </Card>
               </motion.div>
             </TabsContent>
@@ -376,44 +362,22 @@ export default function Profile() {
               <Card>
                 <CardHeader>
                   <CardTitle>Impostazioni Account</CardTitle>
-                  <CardDescription>
-                    Gestisci le impostazioni del tuo account
-                  </CardDescription>
+                  <CardDescription>Gestisci le impostazioni del tuo account (funzionalità in sviluppo).</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label htmlFor="current-password">Password attuale</Label>
-                    <Input id="current-password" type="password" />
-                  </div>
-                  <div>
-                    <Label htmlFor="new-password">Nuova password</Label>
-                    <Input id="new-password" type="password" />
-                  </div>
-                  <div>
-                    <Label htmlFor="confirm-password">Conferma password</Label>
-                    <Input id="confirm-password" type="password" />
-                  </div>
+                <CardContent>
+                  <p className="text-center text-gray-500 py-8">Impostazioni account in arrivo!</p>
                 </CardContent>
-                <CardFooter>
-                  <Button className="bg-primary hover:bg-primary-dark text-white">
-                    Salva modifiche
-                  </Button>
-                </CardFooter>
               </Card>
             </TabsContent>
-            
+
             <TabsContent value="preferences">
               <Card>
                 <CardHeader>
-                  <CardTitle>Preferenze</CardTitle>
-                  <CardDescription>
-                    Personalizza la tua esperienza
-                  </CardDescription>
+                  <CardTitle>Preferenze Utente</CardTitle>
+                  <CardDescription>Personalizza la tua esperienza (funzionalità in sviluppo).</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-center py-8 text-gray-500">
-                    Sezione preferenze in arrivo presto.
-                  </p>
+                <CardContent>
+                  <p className="text-center text-gray-500 py-8">Opzioni di preferenza in arrivo!</p>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -425,3 +389,4 @@ export default function Profile() {
     </div>
   );
 }
+

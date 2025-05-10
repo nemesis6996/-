@@ -5,8 +5,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { useSelector } from "react-redux";
 import { RootState } from "@/store/store";
 import AdminSidebar from "@/components/admin/admin-sidebar";
-import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import type { User } from "@shared/schema"; // Assicurati che User abbia la proprietà role
 
 // Tipi di dati utilizzati nell'interfaccia di amministrazione
 interface DashboardStats {
@@ -35,9 +35,8 @@ export default function AdminDashboard() {
     completedWorkouts: 0,
     activeUsers: 0
   });
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true); // Rinominato per evitare conflitto con variabile non usata, ma comunque da verificare se serve
   
-  // Dati di esempio per il grafico (in un'app reale sarebbero caricati dal server)
   const activityData: ActivityData[] = [
     { day: 'Lun', workouts: 12, registrations: 3 },
     { day: 'Mar', workouts: 19, registrations: 4 },
@@ -48,13 +47,11 @@ export default function AdminDashboard() {
     { day: 'Dom', workouts: 8, registrations: 1 },
   ];
 
-  // Funzione per recuperare le statistiche della dashboard
   const fetchDashboardStats = async () => {
     try {
       setLoading(true);
       
-      // In un'implementazione reale, questi dati verrebbero recuperati da API
-      // Dati di esempio
+      // Dati mockati, in un'applicazione reale, questi verrebbero da un'API
       setStats({
         usersCount: 120,
         exercisesCount: 85,
@@ -64,7 +61,7 @@ export default function AdminDashboard() {
         activeUsers: 78
       });
       
-      // Simuliamo una richiesta API
+      // Simula un ritardo della rete
       await new Promise(resolve => setTimeout(resolve, 800));
       
       setLoading(false);
@@ -81,11 +78,16 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetchDashboardStats();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Controlla che l'utente sia admin
-  if (!user || user.role !== "admin") {
-    return null;
+  // Verifica se l'utente è loggato e ha il ruolo di admin
+  if (!user || (user as User).role !== "admin") { // Cast esplicito a User per accedere a role
+    return (
+        <div className="flex justify-center items-center h-screen">
+            <p>Accesso non autorizzato. Devi essere un amministratore per visualizzare questa pagina.</p>
+        </div>
+    ); 
   }
 
   return (
@@ -312,3 +314,4 @@ export default function AdminDashboard() {
     </div>
   );
 }
+

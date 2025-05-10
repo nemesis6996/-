@@ -45,21 +45,27 @@ const muscleGroupData = [
   { gruppo: "Spalle", sessioni: 3 },
 ];
 
-// Dati di esempio per i progressi su diversi esercizi
-const exerciseProgressData = [
-  { nome: "Panca", settimana1: 60, settimana2: 65, settimana3: 70, settimana4: 75 },
-  { nome: "Squat", settimana1: 80, settimana2: 85, settimana3: 90, settimana4: 95 },
-  { nome: "Stacchi", settimana1: 100, settimana2: 110, settimana3: 115, settimana4: 120 },
-];
+// Interfaccia per le props del CustomTooltip
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: Array<{ 
+    name: string;
+    value: number | string;
+    color?: string; 
+    // Aggiungere altre proprietà se presenti nel payload di Recharts
+  }>;
+  label?: string;
+  unit?: string;
+}
 
 // Personalizzazione tooltip per i grafici
-const CustomTooltip = ({ active, payload, label, unit = "" }) => {
+const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, unit = "" }) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-white p-3 border rounded-md shadow-md">
         <p className="font-medium">{label}</p>
-        {payload.map((entry, index) => (
-          <p key={index} style={{ color: entry.color }}>
+        {payload.map((entry: { name: string; value: number | string; color?: string }, index: number) => (
+          <p key={`tooltip-entry-${index}`} style={{ color: entry.color }}>
             {entry.name}: {entry.value} {unit}
           </p>
         ))}
@@ -234,3 +240,4 @@ const ActivityChart = () => {
 };
 
 export default ActivityChart;
+

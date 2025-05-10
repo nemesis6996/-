@@ -1,7 +1,8 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut as firebaseSignOut, onAuthStateChanged, User } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut as firebaseSignOut, onAuthStateChanged, User as FirebaseUser } from "firebase/auth"; // Rinominato User in FirebaseUser per evitare conflitti
 import { getFirestore } from "firebase/firestore";
 import { getFunctions } from "firebase/functions";
+import type { User, AuthResponse } from "@shared/schema"; // Importa i tipi locali
 
 // Import environment variables
 const firebaseConfig = {
@@ -25,36 +26,36 @@ const functions = getFunctions(app);
 const googleProvider = new GoogleAuthProvider();
 
 // Sign in with Google
-const signInWithGoogle = async () => {
+const signInWithGoogle = async (): Promise<AuthResponse> => {
   try {
     const result = await signInWithPopup(auth, googleProvider);
-    // const credential = GoogleAuthProvider.credentialFromResult(result);
-    // const token = credential.accessToken;
-    // const user = result.user;
-    console.log("Google Sign-In successful:", result.user);
-    return result.user;
+    const firebaseUser = result.user;
+    console.log("Google Sign-In successful:", firebaseUser);
+    
+    // Mappa FirebaseUser al tuo tipo User locale
+    // Questa è una mappatura di base, potrebbe essere necessario recuperare/creare dati aggiuntivi dal tuo backend
+    const localUser: User = {
+      id: firebaseUser.uid,
+      uid: firebaseUser.uid,
+      username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || "google_user",
+      email: firebaseUser.email || "",
+      name: firebaseUser.displayName || undefined,
+      profileImage: firebaseUser.photoURL || undefined,
+      // Altri campi come 'level' o 'role' dovrebbero essere recuperati/impostati dal tuo backend
+      // dopo la registrazione/login iniziale con Google.
+    };
+    
+    return { success: true, user: localUser };
   } catch (error) {
     console.error("Error during Google Sign-In:", error);
-    // Handle specific errors (e.g., popup closed, network error)
-    return null;
+    return { success: false, error: error }; 
   }
 };
 
-// Sign in with Apple (Placeholder - Requires additional setup in Firebase Console and potentially Apple Developer account)
-const signInWithApple = async () => {
-  console.warn("Apple Sign-In not implemented yet. Requires additional configuration.");
-  // Implementation would involve using AppleAuthProvider and signInWithPopup/signInWithRedirect
-  // const provider = new OAuthProvider("apple.com"); 
-  // try {
-  //   const result = await signInWithPopup(auth, provider);
-  //   const user = result.user;
-  //   // Apple credential handling...
-  //   return user;
-  // } catch (error) {
-  //   console.error("Error during Apple Sign-In:", error);
-  //   return null;
-  // }
-  return null;
+// Sign in with Apple (Placeholder)
+const signInWithApple = async (): Promise<AuthResponse> => {
+  console.warn("Apple Sign-In not implemented yet.");
+  return { success: false, error: "Not implemented" };
 };
 
 // Sign out
@@ -68,7 +69,8 @@ const signOut = async () => {
 };
 
 // Observe Auth State Changes
-const onAuthStateChange = (callback: (user: User | null) => void) => {
+// Il callback riceve FirebaseUser, se vuoi usare il tuo tipo User, dovrai mapparlo
+const onAuthStateChange = (callback: (user: FirebaseUser | null) => void) => {
   return onAuthStateChanged(auth, callback);
 };
 
@@ -77,7 +79,7 @@ export {
   db, 
   functions, 
   signInWithGoogle, 
-  signInWithApple, // Exporting placeholder
+  signInWithApple, 
   signOut, 
   onAuthStateChange 
 };

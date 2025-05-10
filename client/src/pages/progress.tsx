@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import Sidebar from "@/components/layout/sidebar";
-import TopBar from "@/components/layout/topbar";
+// import Sidebar from "@/components/layout/sidebar"; // Rimosso perché non utilizzato
+// import TopBar from "@/components/layout/topbar"; // Rimosso perché non utilizzato
 import MobileNavigation from "@/components/layout/mobile-navigation";
 import { useQuery } from "@tanstack/react-query";
 import { UserWorkoutProgress } from "@shared/schema";
@@ -35,7 +35,8 @@ import {
   ResponsiveContainer,
   Tooltip,
   XAxis,
-  YAxis
+  YAxis,
+  Cell 
 } from "recharts";
 import { CalendarIcon } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
@@ -52,12 +53,11 @@ export default function Progress() {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [timeRange, setTimeRange] = useState("week");
   
-  // Fetch user workout progress
-  const { data: progress, isLoading } = useQuery<UserWorkoutProgress[]>({
+  const { data: progressData, isLoading } = useQuery<UserWorkoutProgress[]>({
     queryKey: ["/api/user-progress"],
+    placeholderData: [], 
   });
 
-  // Sample data for charts
   const calorieData = [
     { name: "Lun", calories: 320 },
     { name: "Mar", calories: 450 },
@@ -86,13 +86,8 @@ export default function Progress() {
 
   return (
     <div className="flex h-screen bg-lightBg">
-      <Sidebar />
-      
       <main className="flex-1 overflow-auto pb-16 md:pb-0">
-        <TopBar title="Progressi" />
-        
         <div className="p-4 md:p-6">
-          {/* Header with filters */}
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -100,7 +95,6 @@ export default function Progress() {
             className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4"
           >
             <h1 className="text-2xl font-bold">I tuoi progressi</h1>
-            
             <div className="flex flex-col sm:flex-row gap-3">
               <Popover>
                 <PopoverTrigger asChild>
@@ -121,9 +115,8 @@ export default function Progress() {
                   />
                 </PopoverContent>
               </Popover>
-              
               <Select value={timeRange} onValueChange={setTimeRange}>
-                <SelectTrigger>
+                <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Intervallo" />
                 </SelectTrigger>
                 <SelectContent>
@@ -135,8 +128,6 @@ export default function Progress() {
               </Select>
             </div>
           </motion.div>
-          
-          {/* Stats Overview */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -147,49 +138,49 @@ export default function Progress() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg">Allenamenti completati</CardTitle>
                 <CardDescription>
-                  Nell'ultimo {timeRange === "week" ? "settimana" : timeRange === "month" ? "mese" : timeRange === "3months" ? "trimestre" : "anno"}
+                  Nell_ultimo {timeRange === "week" ? "settimana" : timeRange === "month" ? "mese" : timeRange === "3months" ? "trimestre" : "anno"}
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-primary">24</div>
+                <div className="text-3xl font-bold text-primary">{progressData?.length || 0}</div>
                 <p className="text-sm text-gray-500 mt-1">
-                  <span className="text-accent">↑ 12%</span> rispetto al periodo precedente
+                  <span className="text-accent">↑ 0%</span> rispetto al periodo precedente
                 </p>
               </CardContent>
             </Card>
-            
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg">Calorie bruciate</CardTitle>
                 <CardDescription>
-                  Nell'ultimo {timeRange === "week" ? "settimana" : timeRange === "month" ? "mese" : timeRange === "3months" ? "trimestre" : "anno"}
+                  Nell_ultimo {timeRange === "week" ? "settimana" : timeRange === "month" ? "mese" : timeRange === "3months" ? "trimestre" : "anno"}
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-secondary">6,420</div>
+                <div className="text-3xl font-bold text-secondary">
+                  {progressData?.reduce((acc, curr) => acc + (curr.caloriesBurned || 0), 0) || 0}
+                </div>
                 <p className="text-sm text-gray-500 mt-1">
-                  <span className="text-accent">↑ 8%</span> rispetto al periodo precedente
+                  <span className="text-accent">↑ 0%</span> rispetto al periodo precedente
                 </p>
               </CardContent>
             </Card>
-            
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg">Tempo totale</CardTitle>
                 <CardDescription>
-                  Nell'ultimo {timeRange === "week" ? "settimana" : timeRange === "month" ? "mese" : timeRange === "3months" ? "trimestre" : "anno"}
+                  Nell_ultimo {timeRange === "week" ? "settimana" : timeRange === "month" ? "mese" : timeRange === "3months" ? "trimestre" : "anno"}
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-accent">12h 45m</div>
+                <div className="text-3xl font-bold text-accent">
+                {`${Math.floor((progressData?.reduce((acc, curr) => acc + (curr.durationMinutes || 0), 0) || 0) / 60)}h ${((progressData?.reduce((acc, curr) => acc + (curr.durationMinutes || 0), 0) || 0) % 60)}m`}
+                </div>
                 <p className="text-sm text-gray-500 mt-1">
-                  <span className="text-accent">↑ 5%</span> rispetto al periodo precedente
+                  <span className="text-accent">↑ 0%</span> rispetto al periodo precedente
                 </p>
               </CardContent>
             </Card>
           </motion.div>
-          
-          {/* Tabs for different progress views */}
           <Tabs defaultValue="overview" className="mb-6">
             <TabsList className="mb-4">
               <TabsTrigger value="overview">Panoramica</TabsTrigger>
@@ -197,9 +188,7 @@ export default function Progress() {
               <TabsTrigger value="workouts">Allenamenti</TabsTrigger>
               <TabsTrigger value="measurements">Misurazioni</TabsTrigger>
             </TabsList>
-            
             <TabsContent value="overview" className="mt-0 space-y-4">
-              {/* Weekly Calories Chart */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -224,8 +213,6 @@ export default function Progress() {
                   </CardContent>
                 </Card>
               </motion.div>
-              
-              {/* Workout Distribution */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
@@ -250,7 +237,7 @@ export default function Progress() {
                               dataKey="value"
                               nameKey="name"
                             >
-                              {workoutsByTypeData.map((entry, index) => (
+                              {workoutsByTypeData.map((_, index: number) => (
                                 <Cell key={`cell-${index}`} fill={`hsl(var(--chart-${(index % 5) + 1}))`} />
                               ))}
                             </Pie>
@@ -262,8 +249,6 @@ export default function Progress() {
                     </CardContent>
                   </Card>
                 </motion.div>
-                
-                {/* Recent Activity */}
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -279,11 +264,11 @@ export default function Progress() {
                           <div className="flex justify-center p-6">
                             <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
                           </div>
-                        ) : progress && progress.length > 0 ? (
-                          progress.slice(0, 4).map((workout, index) => (
+                        ) : progressData && progressData.length > 0 ? (
+                          progressData.slice(0, 4).map((workout) => (
                             <div key={workout.id} className="flex items-start">
                               <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center mr-3">
-                                <i className="ri-run-line text-primary"></i>
+                                <span className="text-primary text-xl">💪</span> 
                               </div>
                               <div>
                                 <p className="font-medium">Allenamento completato</p>
@@ -301,8 +286,6 @@ export default function Progress() {
                   </Card>
                 </motion.div>
               </div>
-              
-              {/* Monthly Progress */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -342,7 +325,6 @@ export default function Progress() {
                 </Card>
               </motion.div>
             </TabsContent>
-            
             <TabsContent value="calories" className="mt-0">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -375,13 +357,11 @@ export default function Progress() {
                 </Card>
               </motion.div>
             </TabsContent>
-            
             <TabsContent value="workouts" className="mt-0">
               <div className="text-center py-12">
                 <p className="text-gray-500">Dettaglio degli allenamenti in arrivo presto.</p>
               </div>
             </TabsContent>
-            
             <TabsContent value="measurements" className="mt-0">
               <div className="text-center py-12">
                 <p className="text-gray-500">Tracciamento delle misurazioni in arrivo presto.</p>
@@ -389,15 +369,9 @@ export default function Progress() {
             </TabsContent>
           </Tabs>
         </div>
+        <MobileNavigation />
       </main>
-      
-      <MobileNavigation />
     </div>
   );
 }
 
-// Dummy Cell component for the PieChart (recharts doesn't export it)
-const Cell = (props: any) => {
-  const { fill, children, ...rest } = props;
-  return <path fill={fill} {...rest}>{children}</path>;
-};

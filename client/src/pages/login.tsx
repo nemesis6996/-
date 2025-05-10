@@ -1,16 +1,17 @@
 import { useState } from "react";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation } from "wouter"; // useLocation fornisce navigate
 import { motion } from "framer-motion";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+// import { apiRequest } from "@/lib/queryClient"; // Non utilizzato, rimosso
 import { useQueryClient } from "@tanstack/react-query";
 import { setUser } from "@/store/user-slice";
 import { store } from "@/store/store";
 import { signInWithGoogle } from "@/lib/firebase";
 import { FaGoogle, FaApple } from "react-icons/fa";
+import type { User, AuthResponse } from "@shared/schema"; // Importa User e AuthResponse
 import {
   Card,
   CardContent,
@@ -30,7 +31,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-// Form validation schema
 const loginSchema = z.object({
   username: z.string().min(3, { message: "Username deve contenere almeno 3 caratteri" }),
   password: z.string().min(6, { message: "Password deve contenere almeno 6 caratteri" }),
@@ -39,12 +39,11 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function Login() {
-  const [location, navigate] = useLocation();
+  const [, navigate] = useLocation(); // Corretto: navigate da useLocation, location non usata
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
 
-  // Set up form with validation
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -53,10 +52,8 @@ export default function Login() {
     },
   });
 
-  // Form submission handler
   async function onSubmit(data: LoginFormValues) {
     setIsLoading(true);
-    
     try {
       console.log("Tentativo di login con:", { username: data.username });
       const res = await fetch("/api/auth/login", {
@@ -73,16 +70,11 @@ export default function Login() {
         throw new Error(errorData.message || "Errore durante il login");
       }
       
-      const userData = await res.json();
+      const userData: User = await res.json(); // Tipizza userData come User
       console.log("Login riuscito, dati utente:", userData);
       
-      // Salva l'utente nello store Redux
       store.dispatch(setUser(userData));
-      
-      // Invalida la query dell'utente corrente
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      
-      // Salva i dati utente in localStorage per maggiore resilienza
       localStorage.setItem("nemmuscle_user", JSON.stringify(userData));
       
       toast({
@@ -90,13 +82,12 @@ export default function Login() {
         description: "Benvenuto su nemmuscle",
       });
       
-      // Reindirizza alla dashboard
       navigate("/");
     } catch (error) {
       console.error("Errore durante il login:", error);
       toast({
         title: "Errore di login",
-        description: error instanceof Error ? error.message : "Si è verificato un errore",
+        description: error instanceof Error ? error.message : "Si è verificato un errore sconosciuto",
         variant: "destructive",
       });
     } finally {
@@ -104,54 +95,45 @@ export default function Login() {
     }
   }
   
-  // Login con Google
   async function handleGoogleLogin() {
     setIsLoading(true);
-    
     try {
-      const result = await signInWithGoogle();
+      const result: AuthResponse = await signInWithGoogle(); // signInWithGoogle restituisce AuthResponse
       
-      if (result.success && result.user) {
-        // In una implementazione reale, inviare dati a backend e creare/aggiornare utente
+      if (result && result.success && result.user) {
+        // Qui dovresti inviare result.user al tuo backend per creare/aggiornare l'utente
+        // e poi ottenere l'utente completo dal tuo backend, che includerà l'ID del database, ecc.
+        // Per ora, simuliamo il login con l'utente demo se l'autenticazione Google ha successo.
+        store.dispatch(setUser(result.user)); // Salva l'utente Google nello store (potrebbe essere parziale)
+        queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+        localStorage.setItem("nemmuscle_user", JSON.stringify(result.user));
+
         toast({
           title: "Login con Google effettuato",
-          description: `Benvenuto ${result.user.displayName || "Utente Google"}!`,
+          // Assicurati che `name` esista su `result.user` o fornisci un fallback
+          description: `Benvenuto ${result.user.name || result.user.username || "Utente Google"}!`,
         });
         
-        // Per questa demo, accediamo con l'utente demo per mostrare tutte le funzionalità
-        // Nella versione finale, qui ci sarebbe integrazione con API server per
-        // registrare/autenticare l'utente Google
-        form.setValue("username", "demo");
-        form.setValue("password", "password");
-        form.handleSubmit(onSubmit)();
+        // Reindirizza alla dashboard o alla pagina del profilo
+        navigate("/"); 
+
       } else {
-        throw new Error(result.error || "Errore durante il login con Google");
+        const errorMessage = result?.error ? (typeof result.error === 'string' ? result.error : (result.error as any)?.message) : "Errore durante il login con Google";
+        throw new Error(errorMessage || "Errore sconosciuto durante il login con Google");
       }
     } catch (error) {
       console.error("Errore login Google:", error);
       toast({
         title: "Errore di login con Google",
-        description: error instanceof Error ? error.message : "Si è verificato un errore",
+        description: error instanceof Error ? error.message : "Si è verificato un errore sconosciuto",
         variant: "destructive",
       });
-      
-      // Utilizziamo l'account demo come fallback
-      setTimeout(() => {
-        toast({
-          title: "Accesso demo",
-          description: "Utilizziamo l'account demo per mostrare le funzionalità",
-        });
-        
-        form.setValue("username", "demo");
-        form.setValue("password", "password");
-        form.handleSubmit(onSubmit)();
-      }, 1500);
+      // Fallback a demo non più necessario se l'autenticazione Google fallisce con un errore chiaro
     } finally {
       setIsLoading(false);
     }
   }
   
-  // Login con Apple (da implementare)
   function handleAppleLogin() {
     toast({
       title: "Login con Apple",
@@ -268,7 +250,6 @@ export default function Login() {
               </Button>
             </div>
             
-            {/* Demo Login */}
             <Button 
               variant="outline" 
               className="w-full mt-2"
@@ -287,3 +268,4 @@ export default function Login() {
     </div>
   );
 }
+

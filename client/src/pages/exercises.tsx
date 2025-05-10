@@ -15,42 +15,41 @@ import {
   SelectValue
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { SearchIcon, Filter } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { SearchIcon } from "lucide-react"; // Rimosso Filter non usato
+// import { Button } from "@/components/ui/button"; // Rimosso Button non usato
 
 export default function Exercises() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedMuscleGroup, setSelectedMuscleGroup] = useState("all");
+  const [selectedMuscleGroup, setSelectedMuscleGroup] = useState("all"); // ID del gruppo muscolare o "all"
   const [selectedDifficulty, setSelectedDifficulty] = useState("all");
   const [selectedEquipment, setSelectedEquipment] = useState("all");
   
-  // Fetch all exercises
   const { data: exercises, isLoading } = useQuery<Exercise[]>({
     queryKey: ["/api/exercises"],
+    // initialData: [], // Potrebbe essere utile per evitare undefined all'inizio
   });
   
-  // Fetch muscle groups
   const { data: muscleGroups } = useQuery<MuscleGroup[]>({
     queryKey: ["/api/muscle-groups"],
+    // initialData: [],
   });
   
-  // Filter exercises based on search and filters
   const filteredExercises = exercises?.filter(exercise => {
-    // Search by name or description
-    const matchesSearch = exercise.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                         exercise.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = 
+      exercise.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      exercise.description.toLowerCase().includes(searchQuery.toLowerCase());
     
-    // Filter by muscle group
-    const matchesMuscleGroup = selectedMuscleGroup === "all" || 
-                              exercise.muscleGroupId.toString() === selectedMuscleGroup;
+    const matchesMuscleGroup = 
+      selectedMuscleGroup === "all" || 
+      (exercise.muscleGroups && exercise.muscleGroups.includes(selectedMuscleGroup)); // Controlla se l'array muscleGroups include l'ID selezionato
     
-    // Filter by difficulty
-    const matchesDifficulty = selectedDifficulty === "all" || 
-                             exercise.difficulty.toLowerCase() === selectedDifficulty.toLowerCase();
+    const matchesDifficulty = 
+      selectedDifficulty === "all" || 
+      exercise.difficulty.toLowerCase() === selectedDifficulty.toLowerCase();
     
-    // Filter by equipment
-    const matchesEquipment = selectedEquipment === "all" || 
-                            exercise.equipment.toLowerCase() === selectedEquipment.toLowerCase();
+    const matchesEquipment = 
+      selectedEquipment === "all" || 
+      (exercise.equipment && exercise.equipment.toLowerCase() === selectedEquipment.toLowerCase()); // Controlla se equipment esiste
     
     return matchesSearch && matchesMuscleGroup && matchesDifficulty && matchesEquipment;
   });
@@ -63,7 +62,6 @@ export default function Exercises() {
         <TopBar title="Esercizi" />
         
         <div className="p-4 md:p-6">
-          {/* Search and Filters */}
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -88,7 +86,7 @@ export default function Exercises() {
                 <SelectContent>
                   <SelectItem value="all">Tutti i gruppi muscolari</SelectItem>
                   {muscleGroups?.map((group) => (
-                    <SelectItem key={group.id} value={group.id.toString()}>
+                    <SelectItem key={group.id} value={group.id}> {/* Usa group.id direttamente se è stringa */}
                       {group.name}
                     </SelectItem>
                   ))}
@@ -122,7 +120,6 @@ export default function Exercises() {
             </div>
           </motion.div>
           
-          {/* Tabs for categorization */}
           <Tabs defaultValue="all" className="mb-6">
             <TabsList className="mb-4">
               <TabsTrigger value="all">Tutti</TabsTrigger>
@@ -154,7 +151,6 @@ export default function Exercises() {
               )}
             </TabsContent>
             
-            {/* Other tab contents would be similar */}
             <TabsContent value="upper" className="mt-0">
               <div className="text-center py-12">
                 <p className="text-gray-500">Contenuto di Upper Body in arrivo presto.</p>
@@ -186,3 +182,4 @@ export default function Exercises() {
     </div>
   );
 }
+

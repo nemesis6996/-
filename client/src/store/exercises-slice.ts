@@ -10,7 +10,7 @@ interface ExercisesState {
   error: string | null;
   filters: {
     searchQuery: string;
-    muscleGroupId: number | null;
+    muscleGroupId: string | null; // Cambiato da number a string per coerenza con MuscleGroup.id
     difficulty: string | null;
     equipment: string | null;
   };
@@ -68,7 +68,7 @@ export const exercisesSlice = createSlice({
         state.exercises[index] = action.payload;
       }
     },
-    removeExercise: (state, action: PayloadAction<number>) => {
+    removeExercise: (state, action: PayloadAction<string>) => { // Cambiato action.payload a string
       state.exercises = state.exercises.filter(e => e.id !== action.payload);
     },
   },
@@ -89,3 +89,4 @@ export const {
 } = exercisesSlice.actions;
 
 export default exercisesSlice.reducer;
+

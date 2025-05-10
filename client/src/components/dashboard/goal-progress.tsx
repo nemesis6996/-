@@ -5,7 +5,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Label } from "recharts";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store/store";
 import { Button } from "@/components/ui/button";
-import { HelpCircle, Info } from "lucide-react";
+import { HelpCircle } from "lucide-react"; // Rimosso Info perché non utilizzato
 import {
   Tooltip,
   TooltipContent,
@@ -24,7 +24,8 @@ const COLORS = ["#4f46e5", "#e5e7eb"];
 
 const GoalProgress = () => {
   const weeklyProgress = useSelector((state: RootState) => state.user.weeklyProgress);
-  const [pieData, setPieData] = useState(createPieData(weeklyProgress));
+  // setPieData rimosso perché pieData non viene mai aggiornato dopo l'inizializzazione
+  const [pieData] = useState(createPieData(weeklyProgress)); 
   
   return (
     <motion.div
@@ -55,7 +56,8 @@ const GoalProgress = () => {
               </TooltipProvider>
             </CardTitle>
             <div className="text-sm text-gray-600 flex items-center">
-              <span>3 di 4 allenamenti</span>
+              {/* TODO: Dinamizzare questo valore in base ai dati reali */}
+              <span>3 di 4 allenamenti</span> 
             </div>
           </div>
         </CardHeader>
@@ -75,7 +77,8 @@ const GoalProgress = () => {
                     startAngle={90}
                     endAngle={-270}
                   >
-                    {pieData.map((entry, index) => (
+                    {/* Parametro 'entry' rimosso perché non utilizzato, solo l'indice serve per i COLORS */} 
+                    {pieData.map((_, index: number) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                     <Label
@@ -118,6 +121,7 @@ const GoalProgress = () => {
                 Sei sulla buona strada per raggiungere il tuo obiettivo settimanale.
               </div>
             </div>
+            {/* TODO: Dinamizzare questi valori in base ai dati reali */}
             <div className="grid grid-cols-3 w-full gap-2 text-center">
               <div className="bg-gray-50 rounded-lg p-2">
                 <div className="text-sm text-gray-600">Calorie</div>
@@ -140,3 +144,4 @@ const GoalProgress = () => {
 };
 
 export default GoalProgress;
+

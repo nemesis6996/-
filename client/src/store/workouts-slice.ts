@@ -70,7 +70,7 @@ export const workoutsSlice = createSlice({
       };
     },
     nextExercise: (state) => {
-      if (state.activeWorkout.isActive) {
+      if (state.activeWorkout.isActive && state.activeWorkout.workout && state.activeWorkout.currentExerciseIndex < state.activeWorkout.workout.exercises.length - 1) {
         state.activeWorkout.currentExerciseIndex += 1;
       }
     },
@@ -83,6 +83,7 @@ export const workoutsSlice = createSlice({
       if (state.activeWorkout.isActive) {
         state.activeWorkout.completed = true;
         state.activeWorkout.isActive = false;
+        // Potrebbe essere utile resettare startTime o aggiungere endTime
       }
     },
     cancelWorkout: (state) => {
@@ -97,7 +98,7 @@ export const workoutsSlice = createSlice({
         state.workouts[index] = action.payload;
       }
     },
-    removeWorkout: (state, action: PayloadAction<number>) => {
+    removeWorkout: (state, action: PayloadAction<string>) => { // Cambiato action.payload a string
       state.workouts = state.workouts.filter(w => w.id !== action.payload);
     },
     addProgram: (state, action: PayloadAction<Program>) => {
@@ -109,7 +110,7 @@ export const workoutsSlice = createSlice({
         state.programs[index] = action.payload;
       }
     },
-    removeProgram: (state, action: PayloadAction<number>) => {
+    removeProgram: (state, action: PayloadAction<string>) => { // Cambiato action.payload a string
       state.programs = state.programs.filter(p => p.id !== action.payload);
     },
   },
@@ -137,3 +138,4 @@ export const {
 } = workoutsSlice.actions;
 
 export default workoutsSlice.reducer;
+

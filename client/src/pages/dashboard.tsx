@@ -1,4 +1,3 @@
-import { motion } from "framer-motion";
 import Sidebar from "@/components/layout/sidebar";
 import TopBar from "@/components/layout/topbar";
 import MobileNavigation from "@/components/layout/mobile-navigation";
@@ -16,18 +15,17 @@ import { Exercise, Program } from "@shared/schema";
 import ExerciseCard from "@/components/dashboard/exercise-card";
 import ProgramCard from "@/components/dashboard/program-card";
 import { Link } from "wouter";
-import { useSelector } from "react-redux";
-import { RootState } from "@/store/store";
+// import { useSelector } from "react-redux"; // Rimosso se isAuthenticated non è usato
+// import { RootState } from "@/store/store"; // Rimosso se isAuthenticated non è usato
+// import { motion } from "framer-motion"; // Rimosso perché non utilizzato
 
 export default function Dashboard() {
-  const isAuthenticated = useSelector((state: RootState) => state.user.isAuthenticated);
+  // const isAuthenticated = useSelector((state: RootState) => state.user.isAuthenticated); // Rimosso se non utilizzato
 
-  // Fetch recent exercises
   const { data: exercises } = useQuery<Exercise[]>({
     queryKey: ["/api/exercises"],
   });
 
-  // Fetch recommended programs
   const { data: programs } = useQuery<Program[]>({
     queryKey: ["/api/programs/templates"],
   });
@@ -42,7 +40,6 @@ export default function Dashboard() {
         <div className="p-4 md:p-6">
           <WelcomeSection />
           
-          {/* Layout della dashboard avanzata */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
             <div className="lg:col-span-2">
               <ActivityChart />
@@ -52,7 +49,6 @@ export default function Dashboard() {
             </div>
           </div>
           
-          {/* Seconda riga della dashboard */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
             <div>
               <ProfilePreview />
@@ -65,12 +61,11 @@ export default function Dashboard() {
           <StatsSection />
           <TodaysWorkout />
           
-          {/* Latest Exercises */}
           <div className="mb-8">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold font-heading">Esercizi recenti</h2>
               <Link to="/exercises">
-                <div className="text-primary font-semibold text-sm cursor-pointer">Vedi tutti</div>
+                <span className="text-primary font-semibold text-sm cursor-pointer">Vedi tutti</span>
               </Link>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -84,12 +79,11 @@ export default function Dashboard() {
             </div>
           </div>
           
-          {/* Programs */}
           <div className="mb-8">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold font-heading">Programmi consigliati</h2>
               <Link to="/programs">
-                <div className="text-primary font-semibold text-sm cursor-pointer">Esplora tutti</div>
+                <span className="text-primary font-semibold text-sm cursor-pointer">Esplora tutti</span>
               </Link>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -112,3 +106,4 @@ export default function Dashboard() {
     </div>
   );
 }
+

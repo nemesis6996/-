@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store/store";
-import { LogOut, Settings } from "lucide-react";
+import { LogOut } from "lucide-react"; // Rimosso Settings se non utilizzato
 import { useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -18,7 +18,7 @@ const menuItems = [
 ];
 
 export default function Sidebar() {
-  const [location] = useLocation();
+  const [location, navigate] = useLocation(); // Aggiunto navigate per il logout
   const user = useSelector((state: RootState) => state.user.user);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -27,7 +27,14 @@ export default function Sidebar() {
     try {
       await apiRequest("POST", "/api/auth/logout", {});
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      window.location.href = "/login";
+      // Pulisci lo stato dell_utente da localStorage o Redux se necessario
+      localStorage.removeItem("nemmuscle_user"); 
+      // store.dispatch(setUser(null)); // Se hai un_azione per resettare l_utente
+      toast({
+        title: "Logout effettuato",
+        description: "A presto!",
+      });
+      navigate("/login", { replace: true }); // Reindirizza alla pagina di login
     } catch (error) {
       toast({
         title: "Errore",
@@ -41,9 +48,11 @@ export default function Sidebar() {
     <aside className="hidden md:flex flex-col bg-white shadow-md z-10 w-64 h-full">
       {/* Logo */}
       <div className="p-4 flex items-center justify-center border-b">
-        <h1 className="text-2xl font-bold font-heading text-darkBg">
-          <span className="text-primary">nem</span>muscle
-        </h1>
+        <Link href="/">
+          <span className="text-2xl font-bold font-heading text-darkBg cursor-pointer">
+            <span className="text-primary">nem</span>muscle
+          </span>
+        </Link>
       </div>
       
       {/* Menu Items */}
@@ -54,8 +63,8 @@ export default function Sidebar() {
               <Link href={item.path}>
                 <div
                   className={cn(
-                    "sidebar-item pl-4 py-3 flex items-center space-x-3 rounded cursor-pointer",
-                    location === item.path && "active"
+                    "sidebar-item pl-4 py-3 flex items-center space-x-3 rounded cursor-pointer hover:bg-gray-100 transition-colors",
+                    location === item.path && "bg-primary/10 text-primary font-medium border-l-4 border-primary pl-3"
                   )}
                 >
                   <i className={`${item.icon} text-lg`}></i>
@@ -69,24 +78,23 @@ export default function Sidebar() {
             <Link href="/settings">
               <div
                 className={cn(
-                  "sidebar-item pl-4 py-3 flex items-center space-x-3 rounded cursor-pointer",
-                  location === "/settings" && "active"
+                  "sidebar-item pl-4 py-3 flex items-center space-x-3 rounded cursor-pointer hover:bg-gray-100 transition-colors",
+                  location === "/settings" && "bg-primary/10 text-primary font-medium border-l-4 border-primary pl-3"
                 )}
               >
-                <i className="ri-settings-line text-lg"></i>
+                <i className="ri-settings-line text-lg"></i> 
                 <span>Impostazioni</span>
               </div>
             </Link>
           </div>
           
-          {/* Admin link (mostrato solo per utenti admin) */}
           {user?.role === "admin" && (
             <div>
               <Link href="/admin">
                 <div
                   className={cn(
-                    "sidebar-item pl-4 py-3 flex items-center space-x-3 rounded cursor-pointer bg-gray-100 mt-4 border-l-4 border-primary",
-                    location === "/admin" && "active"
+                    "sidebar-item pl-4 py-3 flex items-center space-x-3 rounded cursor-pointer hover:bg-gray-100 transition-colors bg-gray-50 mt-4 border-l-4 border-accent",
+                    location === "/admin" && "bg-accent/10 text-accent font-medium border-l-4 border-accent pl-3"
                   )}
                 >
                   <i className="ri-admin-line text-lg"></i>
@@ -104,22 +112,22 @@ export default function Sidebar() {
           {user?.profileImage ? (
             <img
               src={user.profileImage}
-              alt={user.name}
+              alt={user.name || user.username || "User avatar"} // Aggiunto fallback per alt text
               className="w-full h-full object-cover"
             />
           ) : (
             <span className="text-lg font-bold text-gray-600">
-              {user?.name?.charAt(0) || "U"}
+              {(user?.name?.charAt(0) || user?.username?.charAt(0) || "U").toUpperCase()} {/* Aggiunto fallback e toUpperCase */}
             </span>
           )}
         </div>
-        <div className="flex-1">
-          <p className="font-medium text-sm">{user?.name || "Utente"}</p>
-          <p className="text-xs text-gray-500">{user?.level || "Principiante"}</p>
+        <div className="flex-1 min-w-0"> {/* Aggiunto min-w-0 per corretto truncation */}
+          <p className="font-medium text-sm truncate">{user?.name || user?.username || "Utente"}</p> {/* Aggiunto fallback e truncate */}
+          <p className="text-xs text-gray-500 capitalize">{user?.level || "Principiante"}</p> {/* Aggiunto capitalize */}
         </div>
         <button 
           onClick={handleLogout}
-          className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500"
+          className="p-1.5 rounded-full hover:bg-red-100 text-gray-500 hover:text-red-600 transition-colors"
           aria-label="Logout"
         >
           <LogOut className="h-4 w-4" />
@@ -128,3 +136,4 @@ export default function Sidebar() {
     </aside>
   );
 }
+

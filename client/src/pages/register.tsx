@@ -1,12 +1,17 @@
 import { useState } from "react";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation } from "wouter"; // useLocation fornisce navigate
 import { motion } from "framer-motion";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
-import { signInWithGoogle } from "@/lib/firebase";
+// import { apiRequest } from "@/lib/queryClient"; // Non utilizzato, rimosso
+import { useQueryClient } from "@tanstack/react-query";
+import { setUser } from "@/store/user-slice";
+import { store } from "@/store/store";
+import { signInWithGoogle } from "@/lib/firebase"; // Assicurati che questa funzione esista e restituisca AuthResponse
 import { FaGoogle, FaApple } from "react-icons/fa";
+import type { User, AuthResponse } from "@shared/schema"; // Importa User e AuthResponse
 import {
   Card,
   CardContent,
@@ -18,7 +23,6 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -26,60 +30,54 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
 } from "@/components/ui/select";
 
-// Form validation schema
 const registerSchema = z.object({
   username: z.string().min(3, { message: "Username deve contenere almeno 3 caratteri" }),
   email: z.string().email({ message: "Inserisci un indirizzo email valido" }),
-  name: z.string().min(2, { message: "Il nome deve contenere almeno 2 caratteri" }),
   password: z.string().min(6, { message: "Password deve contenere almeno 6 caratteri" }),
-  confirmPassword: z.string(),
-  level: z.string(),
+  confirmPassword: z.string().min(6, { message: "Conferma password deve contenere almeno 6 caratteri" }),
+  level: z.enum(["beginner", "intermediate", "advanced"], { message: "Seleziona un livello di esperienza" }),
 }).refine((data) => data.password === data.confirmPassword, {
-  message: "Le password non corrispondono",
+  message: "Le password non coincidono",
   path: ["confirmPassword"],
 });
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function Register() {
-  const [location, navigate] = useLocation();
+  const [, navigate] = useLocation(); // Corretto: navigate da useLocation, location non usata
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
 
-  // Set up form with validation
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
       username: "",
       email: "",
-      name: "",
       password: "",
       confirmPassword: "",
-      level: "Principiante",
+      level: "beginner",
     },
   });
 
-  // Form submission handler
   async function onSubmit(data: RegisterFormValues) {
     setIsLoading(true);
-    
     try {
-      const { confirmPassword, ...registerData } = data;
-      
+      console.log("Tentativo di registrazione con:", data);
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(registerData),
+        body: JSON.stringify(data),
         credentials: "include",
       });
       
@@ -88,16 +86,24 @@ export default function Register() {
         throw new Error(errorData.message || "Errore durante la registrazione");
       }
       
+      const userData: User = await res.json(); // Tipizza userData come User
+      console.log("Registrazione riuscita, dati utente:", userData);
+      
+      store.dispatch(setUser(userData));
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      localStorage.setItem("nemmuscle_user", JSON.stringify(userData));
+      
       toast({
-        title: "Registrazione completata",
-        description: "Account creato con successo. Puoi ora effettuare il login.",
+        title: "Registrazione effettuata",
+        description: "Benvenuto su nemmuscle!",
       });
       
-      navigate("/login");
+      navigate("/");
     } catch (error) {
+      console.error("Errore durante la registrazione:", error);
       toast({
         title: "Errore di registrazione",
-        description: error instanceof Error ? error.message : "Si è verificato un errore",
+        description: error instanceof Error ? error.message : "Si è verificato un errore sconosciuto",
         variant: "destructive",
       });
     } finally {
@@ -105,31 +111,32 @@ export default function Register() {
     }
   }
   
-  // Registrazione con Google
-  async function handleGoogleSignup() {
+  async function handleGoogleLogin() {
     setIsLoading(true);
-    
     try {
-      const result = await signInWithGoogle();
+      const result: AuthResponse = await signInWithGoogle();
       
-      if (result.success && result.user) {
-        // In una implementazione reale, inviare dati a backend per la registrazione
+      if (result && result.success && result.user) {
+        store.dispatch(setUser(result.user));
+        queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+        localStorage.setItem("nemmuscle_user", JSON.stringify(result.user));
+
         toast({
-          title: "Account Google collegato",
-          description: "Per questa demo, vai al login per accedere con Google",
+          title: "Login con Google effettuato",
+          description: `Benvenuto ${result.user.name || result.user.username || "Utente Google"}! Completa il tuo profilo se necessario.`,
         });
         
-        setTimeout(() => {
-          navigate("/login");
-        }, 2000);
+        navigate("/"); 
+
       } else {
-        throw new Error(result.error || "Errore durante la registrazione con Google");
+        const errorMessage = result?.error ? (typeof result.error === 'string' ? result.error : (result.error as any)?.message) : "Errore durante il login con Google";
+        throw new Error(errorMessage || "Errore sconosciuto durante il login con Google");
       }
     } catch (error) {
-      console.error("Errore registrazione Google:", error);
+      console.error("Errore login Google:", error);
       toast({
-        title: "Errore di registrazione con Google",
-        description: error instanceof Error ? error.message : "Si è verificato un errore",
+        title: "Errore di login con Google",
+        description: error instanceof Error ? error.message : "Si è verificato un errore sconosciuto",
         variant: "destructive",
       });
     } finally {
@@ -137,10 +144,9 @@ export default function Register() {
     }
   }
   
-  // Registrazione con Apple (non implementata)
-  function handleAppleSignup() {
+  function handleAppleLogin() {
     toast({
-      title: "Registrazione con Apple",
+      title: "Login con Apple",
       description: "Funzionalità in arrivo presto!",
     });
   }
@@ -157,14 +163,14 @@ export default function Register() {
           <h1 className="text-3xl font-bold font-heading">
             <span className="text-primary">nem</span>muscle
           </h1>
-          <p className="text-gray-600 mt-2">Registrati per creare il tuo avatar 3D e monitorare i tuoi progressi</p>
+          <p className="text-gray-600 mt-2">Il tuo fitness tracker con avatar 3D</p>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Crea un account</CardTitle>
+            <CardTitle>Registrati</CardTitle>
             <CardDescription>
-              Inserisci i tuoi dati per creare un nuovo account
+              Crea un nuovo account per iniziare il tuo percorso fitness
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -177,7 +183,7 @@ export default function Register() {
                     <FormItem>
                       <FormLabel>Username</FormLabel>
                       <FormControl>
-                        <Input placeholder="Il tuo username" {...field} />
+                        <Input placeholder="Scegli un username" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -191,21 +197,7 @@ export default function Register() {
                     <FormItem>
                       <FormLabel>Email</FormLabel>
                       <FormControl>
-                        <Input type="email" placeholder="Il tuo indirizzo email" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nome</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Il tuo nome completo" {...field} />
+                        <Input type="email" placeholder="La tua email" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -219,7 +211,7 @@ export default function Register() {
                     <FormItem>
                       <FormLabel>Password</FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="La tua password" {...field} />
+                        <Input type="password" placeholder="Crea una password" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -253,14 +245,11 @@ export default function Register() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="Principiante">Principiante</SelectItem>
-                          <SelectItem value="Intermedio">Intermedio</SelectItem>
-                          <SelectItem value="Avanzato">Avanzato</SelectItem>
+                          <SelectItem value="beginner">Principiante</SelectItem>
+                          <SelectItem value="intermediate">Intermedio</SelectItem>
+                          <SelectItem value="advanced">Avanzato</SelectItem>
                         </SelectContent>
                       </Select>
-                      <FormDescription>
-                        Seleziona il livello che meglio descrive la tua esperienza con il fitness
-                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -284,12 +273,19 @@ export default function Register() {
             </Form>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
-            <div className="relative my-2">
+            <div className="text-sm text-center text-gray-500 mb-2">
+              Hai già un account?{" "}
+              <Link to="/login">
+                <span className="text-primary font-medium hover:underline cursor-pointer">Accedi</span>
+              </Link>
+            </div>
+            
+            <div className="relative my-4">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t border-gray-300"></span>
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white px-2 text-gray-500">Oppure registrati con</span>
+                <span className="bg-white px-2 text-gray-500">Oppure continua con</span>
               </div>
             </div>
             
@@ -297,7 +293,7 @@ export default function Register() {
               <Button 
                 variant="outline" 
                 className="bg-white border-gray-300 hover:bg-gray-50"
-                onClick={handleGoogleSignup}
+                onClick={handleGoogleLogin}
                 disabled={isLoading}
               >
                 <FaGoogle className="mr-2 h-4 w-4 text-red-500" />
@@ -307,19 +303,12 @@ export default function Register() {
               <Button 
                 variant="outline" 
                 className="bg-white border-gray-300 hover:bg-gray-50"
-                onClick={handleAppleSignup}
+                onClick={handleAppleLogin}
                 disabled={isLoading}
               >
                 <FaApple className="mr-2 h-4 w-4" />
                 Apple
               </Button>
-            </div>
-            
-            <div className="text-sm text-center w-full text-gray-500 mt-4">
-              Hai già un account?{" "}
-              <Link to="/login">
-                <span className="text-primary font-medium hover:underline cursor-pointer">Accedi</span>
-              </Link>
             </div>
           </CardFooter>
         </Card>
@@ -327,3 +316,4 @@ export default function Register() {
     </div>
   );
 }
+

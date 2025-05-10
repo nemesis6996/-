@@ -18,7 +18,8 @@
     /* Path Aliases */
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@shared/*": ["../shared/*"] // Aggiunto alias per @shared
     },
 
     /* Linting */
@@ -28,6 +29,6 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src"]
+  "include": ["src", "../shared"] // Aggiunto ../shared a include
 }
 
