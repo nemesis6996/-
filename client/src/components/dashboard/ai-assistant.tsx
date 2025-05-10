@@ -15,12 +15,19 @@ export default function AiAssistant() {
   // Fetch AI suggestions
   const { data: suggestions, isLoading } = useQuery<AiSuggestion>({
     queryKey: ["/api/ai/suggestions"],
+    // queryFn: async () => { // Assicurati che queryFn sia definito se non usi apiRequest direttamente qui
+    //   const res = await apiRequest("GET", "/api/ai/suggestions");
+    //   return await res.json();
+    // }
   });
 
   // Mutation to refresh suggestions
   const { mutate: refreshSuggestions, isPending: isRefreshing } = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/ai/refresh-suggestions", {});
+      if (!res.ok) {
+        throw new Error("Network response was not ok");
+      }
       return await res.json();
     },
     onSuccess: (data) => {
@@ -30,7 +37,7 @@ export default function AiAssistant() {
         description: "Nuovi suggerimenti generati con successo",
       });
     },
-    onError: (error) => {
+    onError: (_error) => { // Modificato per rimuovere l'avviso sulla variabile 'error' non utilizzata
       toast({
         title: "Errore",
         description: "Impossibile aggiornare i suggerimenti",
@@ -100,7 +107,7 @@ export default function AiAssistant() {
                       Aggiorna
                     </Button>
                     <Button 
-                      onClick={() => {}}
+                      onClick={() => { /* Logica per aprire la chat dell'assistente */ }}
                       className="bg-primary hover:bg-primary-dark text-white"
                     >
                       <MessageSquare className="mr-1 h-4 w-4" />
@@ -116,3 +123,4 @@ export default function AiAssistant() {
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import Sidebar from "@/components/layout/sidebar";
 import TopBar from "@/components/layout/topbar";
@@ -12,11 +12,11 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { useQuery, useMutation } from "@tanstack/react-query"; // Rimosso useQueryClient se non usato
+// import { apiRequest } from "@/lib/queryClient"; // Rimosso se non utilizzato
 import { useToast } from "@/hooks/use-toast";
 import { Check, Send, MessageSquare, RefreshCw, Sparkles, Dumbbell, Brain, Calendar } from "lucide-react";
-import { AiSuggestion } from "@shared/schema";
+import { AiSuggestion } from "@shared/schema"; // Assicurati che il percorso sia corretto e l'interfaccia sia esportata
 import { askAiAssistant } from "@/lib/ai-assistant";
 
 interface Message {
@@ -37,13 +37,16 @@ export default function AiAssistant() {
   ]);
   const [inputMessage, setInputMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const messagesEndRef = useRef<null | HTMLDivElement>(null);
   
-  const queryClient = useQueryClient();
+  // const queryClient = useQueryClient(); // Rimosso se non utilizzato per invalidazioni
   const { toast } = useToast();
   
   // Fetch AI suggestions
   const { data: suggestions } = useQuery<AiSuggestion>({
-    queryKey: ["/api/ai/suggestions"],
+    queryKey: ["/api/ai/suggestions"], // Questo probabilmente dovrebbe chiamare una funzione che usa apiRequest
+    // queryFn: async () => apiRequest("GET", "/api/ai/suggestions") // Esempio di come potrebbe essere usato apiRequest
+    // Per ora, assumiamo che i dati siano mockati o gestiti diversamente se apiRequest non è usato qui.
   });
   
   // Mutation to ask AI assistant
@@ -54,7 +57,7 @@ export default function AiAssistant() {
     onSuccess: (data) => {
       const aiResponse: Message = {
         id: Date.now().toString(),
-        content: data.response,
+        content: data.response, // Assumendo che la risposta dell'AI sia in data.response
         sender: "ai",
         timestamp: new Date(),
       };
@@ -62,15 +65,24 @@ export default function AiAssistant() {
       setMessages((prev) => [...prev, aiResponse]);
       setIsTyping(false);
     },
-    onError: (error) => {
+    onError: (err: Error) => { // Aggiunto tipo per err
+      console.error("AI Assistant error:", err);
       toast({
-        title: "Errore",
-        description: "Impossibile ottenere una risposta dall'assistente. Riprova più tardi.",
+        title: "Errore Assistente IA",
+        description: err.message || "Impossibile ottenere una risposta dall'assistente. Riprova più tardi.",
         variant: "destructive",
       });
       setIsTyping(false);
     },
   });
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
   
   // Handle form submission
   const handleSubmit = (e: React.FormEvent) => {
@@ -114,9 +126,7 @@ export default function AiAssistant() {
   
   // Handle quick question click
   const handleQuickQuestion = (question: string) => {
-    setInputMessage(question);
-    
-    // Submit the question automatically
+    // Non impostare inputMessage qui, altrimenti l'utente lo vede prima dell'invio
     const userMessage: Message = {
       id: Date.now().toString(),
       content: question,
@@ -125,7 +135,7 @@ export default function AiAssistant() {
     };
     
     setMessages((prev) => [...prev, userMessage]);
-    setInputMessage("");
+    // setInputMessage(""); // Non serve se non è stato impostato
     setIsTyping(true);
     
     askAi(question);
@@ -173,6 +183,7 @@ export default function AiAssistant() {
                         </div>
                       </motion.div>
                     ))}
+                    {!suggestions?.suggestions && <p className="text-sm text-gray-500">Nessun suggerimento disponibile al momento.</p>}
                   </div>
                   
                   <div className="mt-6">
@@ -182,11 +193,11 @@ export default function AiAssistant() {
                         <Button
                           key={index}
                           variant="outline"
-                          className="w-full justify-start text-left"
+                          className="w-full justify-start text-left h-auto py-2 px-3 leading-snug"
                           onClick={() => handleQuickQuestion(question.text)}
                         >
                           {question.icon}
-                          <span className="truncate">{question.text}</span>
+                          <span className="truncate whitespace-normal">{question.text}</span>
                         </Button>
                       ))}
                     </div>
@@ -212,64 +223,68 @@ export default function AiAssistant() {
                 </div>
               </div>
               
-              <div className="flex-1 overflow-y-auto p-4">
-                <div className="space-y-4">
-                  {messages.map((message) => (
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {messages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={`flex ${
+                      message.sender === "user" ? "justify-end" : "justify-start"
+                    }`}
+                  >
                     <div
-                      key={message.id}
-                      className={`flex ${
-                        message.sender === "user" ? "justify-end" : "justify-start"
+                      className={`max-w-[80%] p-3 rounded-lg shadow-sm ${
+                        message.sender === "user"
+                          ? "bg-primary text-white rounded-tr-none"
+                          : "bg-gray-100 text-gray-800 rounded-tl-none"
                       }`}
                     >
+                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                       <div
-                        className={`max-w-3/4 p-3 rounded-lg ${
-                          message.sender === "user"
-                            ? "bg-primary text-white rounded-tr-none"
-                            : "bg-gray-100 text-gray-800 rounded-tl-none"
+                        className={`text-xs mt-1 text-right ${
+                          message.sender === "user" ? "text-white/70" : "text-gray-500"
                         }`}
                       >
-                        <p className="text-sm">{message.content}</p>
-                        <div
-                          className={`text-xs mt-1 ${
-                            message.sender === "user" ? "text-white/70" : "text-gray-500"
-                          }`}
-                        >
-                          {message.timestamp.toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </div>
+                        {message.timestamp.toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
                       </div>
                     </div>
-                  ))}
-                  
-                  {isTyping && (
-                    <div className="flex justify-start">
-                      <div className="max-w-3/4 p-3 bg-gray-100 text-gray-800 rounded-lg rounded-tl-none">
-                        <div className="flex space-x-2">
-                          <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce"></div>
-                          <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: "0.2s" }}></div>
-                          <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: "0.4s" }}></div>
-                        </div>
+                  </div>
+                ))}
+                
+                {isTyping && (
+                  <div className="flex justify-start">
+                    <div className="max-w-3/4 p-3 bg-gray-100 text-gray-800 rounded-lg rounded-tl-none shadow-sm">
+                      <div className="flex space-x-1.5 items-center">
+                        <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce"></div>
+                        <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: "0.15s" }}></div>
+                        <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: "0.3s" }}></div>
                       </div>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
               </div>
               
-              <form onSubmit={handleSubmit} className="border-t p-4">
+              <form onSubmit={handleSubmit} className="border-t p-3 md:p-4 bg-gray-50">
                 <div className="flex items-center">
                   <Input
                     placeholder="Scrivi un messaggio..."
                     value={inputMessage}
                     onChange={(e) => setInputMessage(e.target.value)}
                     disabled={isAiThinking || isTyping}
-                    className="flex-1"
+                    className="flex-1 mr-2"
+                    onKeyPress={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        handleSubmit(e as any); // Potrebbe servire un cast o una gestione più precisa dell'evento
+                      }
+                    }}
                   />
                   <Button
                     type="submit"
                     size="icon"
-                    className="ml-2 bg-primary hover:bg-primary-dark text-white"
+                    className="bg-primary hover:bg-primary-dark text-white flex-shrink-0"
                     disabled={isAiThinking || isTyping || !inputMessage.trim()}
                   >
                     {isAiThinking || isTyping ? (
@@ -289,3 +304,4 @@ export default function AiAssistant() {
     </div>
   );
 }
+

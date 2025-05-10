@@ -46,20 +46,27 @@ const muscleGroupData = [
 ];
 
 // Dati di esempio per i progressi su diversi esercizi
-const exerciseProgressData = [
-  { nome: "Panca", settimana1: 60, settimana2: 65, settimana3: 70, settimana4: 75 },
-  { nome: "Squat", settimana1: 80, settimana2: 85, settimana3: 90, settimana4: 95 },
-  { nome: "Stacchi", settimana1: 100, settimana2: 110, settimana3: 115, settimana4: 120 },
-];
+// const exerciseProgressData = [
+//   { nome: "Panca", settimana1: 60, settimana2: 65, settimana3: 70, settimana4: 75 },
+//   { nome: "Squat", settimana1: 80, settimana2: 85, settimana3: 90, settimana4: 95 },
+//   { nome: "Stacchi", settimana1: 100, settimana2: 110, settimana3: 115, settimana4: 120 },
+// ];
+
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: Array<{ name: string; value: number | string; color?: string; [key: string]: any }>;
+  label?: string | number;
+  unit?: string;
+}
 
 // Personalizzazione tooltip per i grafici
-const CustomTooltip = ({ active, payload, label, unit = "" }) => {
+const CustomTooltip = ({ active, payload, label, unit = "" }: CustomTooltipProps) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-white p-3 border rounded-md shadow-md">
+      <div className="bg-white p-3 border rounded-md shadow-md text-gray-800">
         <p className="font-medium">{label}</p>
-        {payload.map((entry, index) => (
-          <p key={index} style={{ color: entry.color }}>
+        {payload.map((entry: { name: string; value: number | string; color?: string }, index: number) => (
+          <p key={index} style={{ color: entry.color }} className="text-sm">
             {entry.name}: {entry.value} {unit}
           </p>
         ))}
@@ -234,3 +241,4 @@ const ActivityChart = () => {
 };
 
 export default ActivityChart;
+

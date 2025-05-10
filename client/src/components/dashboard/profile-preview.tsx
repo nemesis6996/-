@@ -46,9 +46,9 @@ const ProfilePreview = () => {
             <div className="z-10 rounded-full p-1 bg-white shadow-md">
               <Avatar className="h-24 w-24 md:h-32 md:w-32 border-4 border-white">
                 {mainAvatar?.previewUrl ? (
-                  <AvatarImage src={mainAvatar.previewUrl} />
+                  <AvatarImage src={mainAvatar.previewUrl} alt={user.name || user.username || "User Avatar"} />
                 ) : (
-                  <AvatarImage src={user.profileImage || "https://picsum.photos/200"} />
+                  <AvatarImage src={user.profileImage || "https://picsum.photos/200"} alt={user.name || user.username || "User Avatar"} />
                 )}
                 <AvatarFallback className="text-2xl">
                   {user.name?.charAt(0) || user.username?.charAt(0) || "U"}
@@ -102,7 +102,7 @@ const ProfilePreview = () => {
                     </span>
                   </div>
                   {achievement.completed && (
-                    <Badge variant="success" className="bg-green-100 text-green-800 hover:bg-green-100">
+                    <Badge variant="outline" className="bg-green-100 text-green-800 hover:bg-green-100 border-green-200">
                       Completato
                     </Badge>
                   )}
@@ -124,3 +124,4 @@ const ProfilePreview = () => {
 };
 
 export default ProfilePreview;
+

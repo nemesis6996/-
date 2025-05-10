@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useSelector } from "react-redux";
-import { RootState } from "@/store/store";
+// import { useSelector } from "react-redux";
+// import { RootState } from "@/store/store";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
 

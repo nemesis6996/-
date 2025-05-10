@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react"; // Aggiunto useEffect
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PieChart, Pie, Cell, ResponsiveContainer, Label } from "recharts";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store/store";
 import { Button } from "@/components/ui/button";
-import { HelpCircle, Info } from "lucide-react";
+import { HelpCircle } from "lucide-react"; // Rimosso Info, mantenuto HelpCircle
 import {
   Tooltip,
   TooltipContent,
@@ -16,15 +16,20 @@ import {
 // Dati per il grafico a torta
 const createPieData = (progress: number) => [
   { name: "Completato", value: progress },
-  { name: "Rimanente", value: 100 - progress }
+  { name: "Rimanente", value: 100 - progress > 0 ? 100 - progress : 0 } // Assicura che il valore non sia negativo
 ];
 
 // Colori per il grafico
 const COLORS = ["#4f46e5", "#e5e7eb"];
 
 const GoalProgress = () => {
-  const weeklyProgress = useSelector((state: RootState) => state.user.weeklyProgress);
+  const weeklyProgress = useSelector((state: RootState) => state.user.weeklyProgress) || 0; // Default a 0 se undefined
   const [pieData, setPieData] = useState(createPieData(weeklyProgress));
+
+  // Aggiorna pieData quando weeklyProgress cambia
+  useEffect(() => {
+    setPieData(createPieData(weeklyProgress));
+  }, [weeklyProgress]);
   
   return (
     <motion.div
@@ -55,7 +60,8 @@ const GoalProgress = () => {
               </TooltipProvider>
             </CardTitle>
             <div className="text-sm text-gray-600 flex items-center">
-              <span>3 di 4 allenamenti</span>
+              {/* TODO: Rendere dinamico questo valore */}
+              <span>3 di 4 allenamenti</span> 
             </div>
           </div>
         </CardHeader>
@@ -73,13 +79,14 @@ const GoalProgress = () => {
                     paddingAngle={0}
                     dataKey="value"
                     startAngle={90}
-                    endAngle={-270}
+                    endAngle={-270} // Per far partire il grafico dall'alto e andare in senso orario
                   >
-                    {pieData.map((entry, index) => (
+                    {pieData.map((_entry, index) => ( // _entry per indicare che non è usato
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                     <Label
                       content={({ viewBox }) => {
+                        if (!viewBox) return null;
                         const { cx, cy } = viewBox as { cx: number; cy: number };
                         return (
                           <text
@@ -118,6 +125,7 @@ const GoalProgress = () => {
                 Sei sulla buona strada per raggiungere il tuo obiettivo settimanale.
               </div>
             </div>
+            {/* TODO: Rendere dinamici questi valori */}
             <div className="grid grid-cols-3 w-full gap-2 text-center">
               <div className="bg-gray-50 rounded-lg p-2">
                 <div className="text-sm text-gray-600">Calorie</div>
@@ -140,3 +148,4 @@ const GoalProgress = () => {
 };
 
 export default GoalProgress;
+

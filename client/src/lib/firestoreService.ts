@@ -10,22 +10,22 @@ import {
   where, 
   getDocs, 
   Timestamp, 
-  collectionGroup, 
+  // collectionGroup, // Rimosso perché non utilizzato
   writeBatch 
 } from "firebase/firestore";
 import { db, auth } from "./firebase"; // Assuming db is exported from firebase.ts
 import { 
   UserProfile, 
   Exercise, 
-  Workout, 
-  WorkoutExercise, 
-  Program, 
-  ProgramWorkout, 
+  Workout,
+  WorkoutExercise, // Assumendo sia utilizzato nelle funzioni dei workout
+  // Program, // Rimosso perché non utilizzato nel codice visibile
+  // ProgramWorkout, // Rimosso perché non utilizzato nel codice visibile
   UserWorkoutProgress, 
   UserExerciseProgress, 
   MuscleGroup 
   // Import other types as needed
-} from "./firestoreTypes";
+} from "./firestoreTypes"; // Assicurati che questo file esista e esporti i tipi corretti
 
 // --- User Profile Functions ---
 
@@ -33,19 +33,19 @@ const usersCollection = collection(db, "users");
 
 // Create or Update User Profile (using Firebase Auth UID as document ID)
 export const setUserProfile = async (userId: string, profileData: Partial<UserProfile>): Promise<void> => {
-  const userDocRef = doc(db, "users", userId);
+  const userDocRef = doc(usersCollection, userId); // Utilizza usersCollection
   // Ensure email and creation timestamp are set correctly
   const dataToSet: Partial<UserProfile> = {
     ...profileData,
     email: profileData.email || auth.currentUser?.email || undefined,
-    createdAt: profileData.createdAt || Timestamp.now(),
+    createdAt: profileData.createdAt || Timestamp.now(), // Assicurati che createdAt sia di tipo Timestamp se UserProfile lo richiede
   };
   await setDoc(userDocRef, dataToSet, { merge: true }); // Use merge:true to update existing or create new
 };
 
 // Get User Profile
 export const getUserProfile = async (userId: string): Promise<UserProfile | null> => {
-  const userDocRef = doc(db, "users", userId);
+  const userDocRef = doc(usersCollection, userId); // Utilizza usersCollection anche qui per coerenza
   const docSnap = await getDoc(userDocRef);
   if (docSnap.exists()) {
     return docSnap.data() as UserProfile;
@@ -100,7 +100,7 @@ export const getAllExercises = async (): Promise<Exercise[]> => {
 
 // Get Exercise by ID
 export const getExerciseById = async (exerciseId: string): Promise<Exercise | null> => {
-  const exerciseDocRef = doc(db, "exercises", exerciseId);
+  const exerciseDocRef = doc(exercisesCollection, exerciseId);
   const docSnap = await getDoc(exerciseDocRef);
   if (docSnap.exists()) {
     return { id: docSnap.id, ...docSnap.data() } as Exercise;
@@ -112,13 +112,13 @@ export const getExerciseById = async (exerciseId: string): Promise<Exercise | nu
 
 // Update Exercise
 export const updateExercise = async (exerciseId: string, updateData: Partial<Exercise>): Promise<void> => {
-  const exerciseDocRef = doc(db, "exercises", exerciseId);
+  const exerciseDocRef = doc(exercisesCollection, exerciseId);
   await updateDoc(exerciseDocRef, updateData);
 };
 
 // Delete Exercise
 export const deleteExercise = async (exerciseId: string): Promise<void> => {
-  const exerciseDocRef = doc(db, "exercises", exerciseId);
+  const exerciseDocRef = doc(exercisesCollection, exerciseId);
   await deleteDoc(exerciseDocRef);
 };
 
@@ -130,16 +130,14 @@ const workoutsCollection = collection(db, "workouts");
 export const addWorkout = async (workoutData: Omit<Workout, 'id' | 'createdAt'>, workoutExercisesData: Omit<WorkoutExercise, 'id'>[]): Promise<string> => {
   const batch = writeBatch(db);
   
-  // 1. Add the main workout document
-  const workoutDocRef = doc(workoutsCollection); // Generate ID upfront
+  const workoutDocRef = doc(workoutsCollection); 
   const dataToAdd = {
     ...workoutData,
-    userId: workoutData.isTemplate ? null : auth.currentUser?.uid, // Set userId if not a template
+    userId: workoutData.isTemplate ? null : auth.currentUser?.uid, 
     createdAt: Timestamp.now(),
   };
   batch.set(workoutDocRef, dataToAdd);
 
-  // 2. Add exercises to the subcollection
   const exercisesSubcollection = collection(workoutDocRef, "workoutExercises");
   workoutExercisesData.forEach(exercise => {
     const exerciseDocRef = doc(exercisesSubcollection);
@@ -152,7 +150,7 @@ export const addWorkout = async (workoutData: Omit<Workout, 'id' | 'createdAt'>,
 
 // Get Workout with Exercises
 export const getWorkoutWithExercises = async (workoutId: string): Promise<{ workout: Workout; exercises: WorkoutExercise[] } | null> => {
-  const workoutDocRef = doc(db, "workouts", workoutId);
+  const workoutDocRef = doc(workoutsCollection, workoutId);
   const workoutSnap = await getDoc(workoutDocRef);
 
   if (!workoutSnap.exists()) {
@@ -163,7 +161,7 @@ export const getWorkoutWithExercises = async (workoutId: string): Promise<{ work
   const workoutData = { id: workoutSnap.id, ...workoutSnap.data() } as Workout;
 
   const exercisesSubcollection = collection(workoutDocRef, "workoutExercises");
-  const exercisesQuery = query(exercisesSubcollection); // Add orderBy('order') if needed
+  const exercisesQuery = query(exercisesSubcollection); 
   const exercisesSnapshot = await getDocs(exercisesQuery);
   
   const exercises: WorkoutExercise[] = [];
@@ -206,7 +204,7 @@ export const addUserWorkoutProgress = async (progressData: Omit<UserWorkoutProgr
 
   const dataToAdd = {
     ...progressData,
-    userId: auth.currentUser?.uid, // Ensure userId is set
+    userId: auth.currentUser?.uid, 
     completedAt: Timestamp.now(),
   };
   batch.set(progressDocRef, dataToAdd);
@@ -220,5 +218,4 @@ export const addUserWorkoutProgress = async (progressData: Omit<UserWorkoutProgr
   await batch.commit();
   return progressDocRef.id;
 };
-
 
